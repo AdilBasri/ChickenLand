@@ -2,46 +2,73 @@ import pygame
 from settings import *
 
 class NPC(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, x, y, variant='duck'):
         super().__init__()
-        # ARTIK DUCK GÖRSELİ KULLANIYORUZ
-        # duck_wolk.png 2 kareden oluşuyor, ilk karesini alıp durma pozu yapacağız.
+        self.variant = variant
+        self.frames = []
+        
+        # Hangi tür NPC ise onun görselini yükle
         try:
-            sheet = pygame.image.load('assets/duck_wolk.png').convert_alpha()
-            frame_width = sheet.get_width() // 2 # 2 Kare olduğu için 2'ye bölüyoruz
+            if variant == 'duck':
+                sheet = pygame.image.load('assets/duck_wolk.png').convert_alpha()
+                frame_count = 2
+                scale = 1.25
+            elif variant == 'seagull':
+                sheet = pygame.image.load('assets/seagull_wolk.png').convert_alpha()
+                frame_count = 5
+                scale = 2.5
+            else:
+                # Varsayılan
+                sheet = pygame.image.load('assets/duck_wolk.png').convert_alpha()
+                frame_count = 2
+                scale = 1.25
+
+            sheet_width = sheet.get_width()
+            sheet_height = sheet.get_height()
+            frame_width = sheet_width // frame_count
             
-            surface = pygame.Surface((frame_width, sheet.get_height()), pygame.SRCALPHA)
-            surface.blit(sheet, (0, 0), (0, 0, frame_width, sheet.get_height()))
+            target_size = int(TILE_SIZE * scale)
             
-            # Ördek Scale (1.25) uyguluyoruz ki oynadığımız ördekle aynı boyda olsun
-            target_size = int(TILE_SIZE * 1.25)
-            self.image = pygame.transform.scale(surface, (target_size, target_size))
-            
-            # NPC genelde sola baksın (Oyuncu sağdan geliyor)
-            # duck_wolk sağa bakıyorsa flip gerekebilir, genelde sağa bakar.
-            # Oyuncu sağdan geldiği için NPC sola dönük olsun:
-            self.image = pygame.transform.flip(self.image, True, False) 
+            for i in range(frame_count):
+                surface = pygame.Surface((frame_width, sheet_height), pygame.SRCALPHA)
+                surface.blit(sheet, (0, 0), (i * frame_width, 0, frame_width, sheet_height))
+                scaled = pygame.transform.scale(surface, (target_size, target_size))
+                # NPC oyuncuya baksın (Sola dönük)
+                flipped = pygame.transform.flip(scaled, True, False)
+                self.frames.append(flipped)
             
         except FileNotFoundError:
-            # Görsel yoksa hata vermesin, kırmızı kare
-            self.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-            self.image.fill((255, 0, 0))
+            s = pygame.Surface((TILE_SIZE, TILE_SIZE))
+            s.fill((0, 255, 0)) # Yeşil Kutu
+            self.frames = [s]
 
-        # Konumlandırma (Yere tam basması için offset ayarı yok, direkt hitboxtan)
+        self.frame_index = 0
+        self.image = self.frames[0]
+        # Yere basacak şekilde konumlandır
         self.rect = self.image.get_rect(midbottom=(x + TILE_SIZE//2, y + TILE_SIZE))
+        self.last_update = pygame.time.get_ticks()
+
+    def animate(self):
+        # NPC olduğu yerde beklerken hafif hareket etsin
+        now = pygame.time.get_ticks()
+        if now - self.last_update > 200: # Daha yavaş animasyon
+            self.last_update = now
+            self.frame_index = (self.frame_index + 1) % len(self.frames)
+            self.image = self.frames[self.frame_index]
 
     def draw_scrolled(self, screen, scroll_x):
+        self.animate()
         if -TILE_SIZE < self.rect.x - scroll_x < SCREEN_WIDTH:
             screen.blit(self.image, (self.rect.x - scroll_x, self.rect.y))
             
-    def check_proximity(self, player_rect, scroll_x, screen, companion_active):
-        # Yoldaş zaten alındıysa (companion_active = True) artık E çıkmasın
+    def check_proximity(self, player_rect, scroll_x, screen, already_recruited):
         distance = abs(self.rect.centerx - player_rect.centerx)
-        if distance < 150 and not companion_active:
+        # Eğer bu bölümün karakteri zaten alındıysa konuşma balonu çıkmasın
+        if distance < 150 and not already_recruited:
             return True
         return False
 
-# Düşman (Köpek) - (Değişiklik Yok, aynen korundu)
+# Düşman (Köpek) - Değişiklik Yok
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()

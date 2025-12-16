@@ -15,6 +15,12 @@ ACCELERATION = 0.5
 FRICTION = 0.88
 ANIMATION_SPEED = 100
 
+# Ağ (Grapple) Ayarları
+ROPE_LENGTH_MAX = 400   # Ağın uzayabileceği maksimum mesafe
+ROPE_SPEED = 15         # Ağın fırlatılma hızı
+SWING_FORCE = 0.8       # Sallanırken uygulanan kuvvet
+ARROW_LENGTH = 60       # Nişan alma okunun uzunluğu
+
 # Boyutlar
 TILE_SIZE = 64
 PLAYER_SCALE = 2.5
@@ -27,9 +33,12 @@ SKY_BLUE = (135, 206, 250)
 UI_BG_COLOR = (0, 0, 0, 180)
 TEXT_COLOR = (255, 255, 255)
 SELECTION_COLOR = (255, 215, 0)
-TRANSITION_COLOR = (0, 0, 0) # Geçiş rengi (Siyah)
+TRANSITION_COLOR = (0, 0, 0)
+ROPE_COLOR = (255, 255, 255) # Beyaz İp
+ARROW_COLOR = (255, 0, 0)    # Kırmızı Ok
 
-# --- HARİTALAR ---
+# --- HARİTALAR --- (Level 4 aşağıda güncellendi)
+# ... Diğer haritalar level_map.py dosyasında ...
 
 # LEVEL 1: MARIO 1-1
 LEVEL_1_MAP = [

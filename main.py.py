@@ -2,31 +2,52 @@ import pygame
 import sys
 import math
 from settings import *
-from sprites import Tile, Flag
-from player import Player, Companion
+from sprites import Tile, Flag, WebItem
+from player import Player
 from npcs import NPC, Enemy
 from ui import draw_prompt, draw_dialogue_box
-from level_map import LEVEL_1_MAP, LEVEL_2_MAP, LEVEL_3_MAP
+from level_map import LEVEL_1_MAP, LEVEL_2_MAP, LEVEL_3_MAP, LEVEL_4_MAP
 
 # --- GLOBAL DURUMLAR ---
-GAME_STATE = 'playing'   # playing, dialogue, transition_out, transition_in
+GAME_STATE = 'playing'
 DIALOGUE_OPTION = 0 
-COMPANION_ACTIVE = False
 CURRENT_LEVEL = 1
 
-# --- GEÇİŞ ANİMASYONU DEĞİŞKENLERİ ---
+# --- PARTİ SİSTEMİ ---
+party = []          
+active_index = 0    
+
+# --- GEÇİŞ ANİMASYONU ---
 TRANSITION_RADIUS = 0
-# Ekran köşegeni kadar büyüsün ki tam kaplasın
 MAX_RADIUS = int(math.sqrt(SCREEN_WIDTH**2 + SCREEN_HEIGHT**2)) 
 TRANSITION_SPEED = 25 
 TRANSITION_ANGLE = 0
 
-def create_level(level_map):
+bg_image = None
+
+def load_background():
+    global bg_image
+    try:
+        bg = pygame.image.load('assets/background.png').convert()
+        bg_image = pygame.transform.scale(bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
+    except FileNotFoundError:
+        bg_image = None
+
+def draw_background(screen, scroll_x):
+    if bg_image:
+        rel_x = (scroll_x * 0.5) % SCREEN_WIDTH
+        screen.blit(bg_image, (-rel_x, 0))
+        screen.blit(bg_image, (-rel_x + SCREEN_WIDTH, 0))
+    else:
+        screen.fill(SKY_BLUE)
+
+def create_level(level_map, level_num):
     tiles = pygame.sprite.Group()
     hazards = pygame.sprite.Group()
     npcs = pygame.sprite.Group()
     enemies = pygame.sprite.Group()
     flags = pygame.sprite.Group()
+    web_items = pygame.sprite.Group() 
 
     for row_index, row in enumerate(level_map):
         for col_index, cell in enumerate(row):
@@ -36,213 +57,228 @@ def create_level(level_map):
             elif cell == 'T': tiles.add(Tile(x, y, 'dirt'))
             elif cell == 'K': tiles.add(Tile(x, y, 'box'))
             elif cell == 'W': hazards.add(Tile(x, y, 'water'))
-            elif cell == 'N': npcs.add(NPC(x, y))     # Hikaye Karakteri
-            elif cell == 'D': enemies.add(Enemy(x, y)) # Düşman (Köpek)
-            elif cell == 'F': flags.add(Flag(x, y))    # Bölüm Sonu Bayrağı
+            elif cell == 'N': 
+                variant = 'duck'
+                if level_num == 4: variant = 'seagull'
+                npcs.add(NPC(x, y, variant))     
+            elif cell == 'D': enemies.add(Enemy(x, y)) 
+            elif cell == 'F': flags.add(Flag(x, y))
+            elif cell == 'S': web_items.add(WebItem(x, y)) 
             
-    return tiles, hazards, npcs, enemies, flags
+    return tiles, hazards, npcs, enemies, flags, web_items
 
-def reset_game(player, companion_group, npc_group, enemy_group, flag_group, level_map):
-    # Oyuncuyu başlangıca al
-    player.rect.topleft = player.start_pos
-    player.velocity = pygame.math.Vector2(0, 0)
-    player.is_dead = False
+def reset_game(party_list, npc_group, enemy_group, flag_group, web_group, level_map, level_num):
+    start_x, start_y = party_list[0].start_pos
     
-    # Yoldaş durumunu kontrol et
-    has_companion = COMPANION_ACTIVE 
+    for i, p in enumerate(party_list):
+        p.rect.topleft = (start_x - (i * 30), start_y)
+        p.velocity = pygame.math.Vector2(0, 0)
+        p.is_dead = False
+        p.grapple_state = 'none' 
     
-    # Eski grupleri temizle
-    companion_group.empty()
     npc_group.empty()
     enemy_group.empty()
     flag_group.empty()
+    web_group.empty()
     
-    # Yeni harita objelerini oluştur
-    new_tiles, new_hazards, new_npcs, new_enemies, new_flags = create_level(level_map)
+    new_tiles, new_hazards, new_npcs, new_enemies, new_flags, new_webs = create_level(level_map, level_num)
     
-    # Sprite gruplarını güncelle
     for npc in new_npcs: npc_group.add(npc)
     for enemy in new_enemies: enemy_group.add(enemy)
     for flag in new_flags: flag_group.add(flag)
+    for web in new_webs: web_group.add(web)
     
-    # Eğer yoldaşımız zaten varsa (önceki levelden geldiyse), oyuncunun yanında doğsun
-    if has_companion:
-        # Oyuncunun 50 piksel solunda doğsun
-        companion = Companion(player.rect.x - 50, player.rect.y)
-        companion.target_player = player
-        companion_group.add(companion)
-
     global GAME_STATE
     GAME_STATE = 'playing'
     
-    # Yeni oluşturulan grupları ve scroll değerini (0) döndür
-    return 0, new_tiles, new_hazards, new_npcs, new_enemies, new_flags
+    return 0, new_tiles, new_hazards, new_npcs, new_enemies, new_flags, new_webs
 
 def draw_transition(screen):
     global TRANSITION_RADIUS, TRANSITION_ANGLE
-    
-    # Dönen siyah kareyi çiz
     rect_size = TRANSITION_RADIUS
-    if rect_size < 0: rect_size = 0 # Negatif boyut hatasını önle
-    
+    if rect_size < 0: rect_size = 0
     surface = pygame.Surface((int(rect_size), int(rect_size)))
-    surface.fill((0,0,0)) # Siyah
-    
-    # Kareyi merkezden döndür
+    surface.fill(TRANSITION_COLOR)
     rotated_surface = pygame.transform.rotate(surface, TRANSITION_ANGLE)
     rect = rotated_surface.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2))
-    
     screen.blit(rotated_surface, rect)
     TRANSITION_ANGLE += 5
 
 def main():
-    global GAME_STATE, DIALOGUE_OPTION, COMPANION_ACTIVE, CURRENT_LEVEL, TRANSITION_RADIUS
+    global GAME_STATE, DIALOGUE_OPTION, CURRENT_LEVEL, TRANSITION_RADIUS, active_index, party
     
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     pygame.display.set_caption("Chick: Going To Chicken Land")
     clock = pygame.time.Clock()
 
-    # BAŞLANGIÇ: LEVEL 1
-    current_map = LEVEL_1_MAP
-    tile_group, hazard_group, npc_group, enemy_group, flag_group = create_level(current_map)
+    try:
+        ui_font = pygame.font.Font('assets/font.ttf', 20)
+    except FileNotFoundError:
+        ui_font = pygame.font.SysFont("Arial", 20, bold=True)
     
-    player = Player(200, 800)
-    companion_group = pygame.sprite.GroupSingle()
+    load_background()
+
+    # BAŞLANGIÇ
+    current_map = LEVEL_1_MAP
+    tile_group, hazard_group, npc_group, enemy_group, flag_group, web_group = create_level(current_map, CURRENT_LEVEL)
+    
+    party = []
+    p1 = Player(200, 800, char_type='chicken', p_index=1)
+    party.append(p1)
+    active_index = 0
 
     scroll_x = 0
     can_interact = False
 
     while True:
+        if active_index >= len(party): active_index = 0
+        active_player = party[active_index]
+
         # --- EVENT LOOP ---
         for event in pygame.event.get():
             if event.type == pygame.QUIT: pygame.quit(), sys.exit()
+            
+            # --- KEY DOWN ---
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE: pygame.quit(), sys.exit()
                 
-                # OYNANIŞ MODU TUŞLARI
+                if event.key == pygame.K_c and GAME_STATE == 'playing':
+                    if len(party) > 1:
+                        active_player.grapple_state = 'none' # Değiştirince bırak
+                        active_index = (active_index + 1) % len(party)
+
                 if GAME_STATE == 'playing':
-                    if event.key == pygame.K_SPACE: player.jump()
+                    # SPACE TUŞU:
+                    # 1. Eğer ağ 'active' ise -> Bırak ve Zıpla (Release)
+                    # 2. Eğer ağ yoksa veya 'none' ise -> Nişan almayı başlatır (Player.get_input içinde)
+                    if event.key == pygame.K_SPACE:
+                        if active_player.grapple_state == 'active':
+                            active_player.release_grapple()
+                        # Normal zıplama için UP tuşu kullanılıyor artık
+                        
+                    if event.key == pygame.K_UP: 
+                        active_player.jump()
                     
-                    # NPC ile Etkileşim
                     if event.key == pygame.K_e and can_interact:
                         GAME_STATE = 'dialogue'
-                        player.velocity.x = 0 
-                        if companion_group.sprite: companion_group.sprite.velocity.x = 0
+                        for p in party: p.velocity.x = 0
 
-                # DİYALOG MODU TUŞLARI
                 elif GAME_STATE == 'dialogue':
                     if event.key == pygame.K_LEFT: DIALOGUE_OPTION = 0
                     if event.key == pygame.K_RIGHT: DIALOGUE_OPTION = 1
                     if event.key == pygame.K_RETURN:
-                        # Seçim Yapıldı
-                        if DIALOGUE_OPTION == 0: # EVET
-                            COMPANION_ACTIVE = True
+                        if DIALOGUE_OPTION == 0: 
                             if npc_group:
                                 npc = npc_group.sprites()[0]
-                                # Yoldaş Duck'ı oluştur
-                                companion = Companion(npc.rect.centerx, npc.rect.bottom - VISUAL_Y_OFFSET - CHAR_HEIGHT)
-                                companion.target_player = player
-                                companion_group.add(companion)
-                                npc_group.empty() # NPC'yi sahneden kaldır
+                                new_p_index = len(party) + 1
+                                new_type = 'duck'
+                                if CURRENT_LEVEL == 4: new_type = 'seagull'
+                                new_char = Player(npc.rect.x, npc.rect.y, char_type=new_type, p_index=new_p_index)
+                                party.append(new_char)
+                                npc_group.empty()
                         GAME_STATE = 'playing'
+            
+            # --- KEY UP ---
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_SPACE:
+                    # Tuş bırakılınca: Nişan alıyorsak fırlat
+                    if active_player.has_grapple and active_player.grapple_state == 'aiming':
+                        active_player.fire_grapple(tile_group)
+                        if active_player.grapple_state != 'active':
+                            active_player.grapple_state = 'none'
 
         # --- UPDATE ---
         if GAME_STATE == 'playing':
-            # Kamera Takibi
-            target_scroll = player.rect.centerx - SCREEN_WIDTH / 2
+            target_scroll = active_player.rect.centerx - SCREEN_WIDTH / 2
             if target_scroll < 0: target_scroll = 0
-            scroll_x = target_scroll
+            scroll_x += (target_scroll - scroll_x) * 0.1
 
-            # Karakter Güncellemeleri
-            player.update(tile_group, hazard_group, GAME_STATE)
-            if companion_group.sprite:
-                companion_group.sprite.update(tile_group, hazard_group, GAME_STATE)
-
-            # Düşman Güncellemesi (Oyuncuyu kovalasın)
-            for enemy in enemy_group: enemy.update(tile_group, player)
-
-            # --- ÇARPIŞMA KONTROLLERİ ---
-            
-            # 1. Oyuncu vs Düşman
-            if pygame.sprite.spritecollide(player, enemy_group, False): 
-                player.is_dead = True
+            any_dead = False
+            for p in party:
+                p.update(tile_group, hazard_group, GAME_STATE, (p == active_player), party)
                 
-            # 2. Yoldaş vs Düşman (YENİ)
-            if companion_group.sprite:
-                if pygame.sprite.spritecollide(companion_group.sprite, enemy_group, False):
-                    companion_group.sprite.is_dead = True
+                hits = pygame.sprite.spritecollide(p, web_group, True)
+                for hit in hits:
+                    p.has_grapple = True 
+                
+                if pygame.sprite.spritecollide(p, enemy_group, False):
+                    p.is_dead = True
+                
+                if p.is_dead:
+                    any_dead = True
 
-            # 3. Bölüm Sonu (Bayrak)
-            if pygame.sprite.spritecollide(player, flag_group, False):
+            for enemy in enemy_group: enemy.update(tile_group, active_player)
+            web_group.update()
+
+            all_players_finished = True
+            for p in party:
+                if not pygame.sprite.spritecollide(p, flag_group, False):
+                    all_players_finished = False
+                    break
+            
+            if all_players_finished:
                 GAME_STATE = 'transition_out' 
                 TRANSITION_RADIUS = 0 
 
-            # --- ÖLÜM VE RESET ---
-            # Eğer Oyuncu YA DA Yoldaş ölürse reset at
-            if player.is_dead or (companion_group.sprite and companion_group.sprite.is_dead):
-                scroll_x, tile_group, hazard_group, npc_group, enemy_group, flag_group = reset_game(
-                    player, companion_group, npc_group, enemy_group, flag_group, current_map
+            if any_dead:
+                scroll_x, tile_group, hazard_group, npc_group, enemy_group, flag_group, web_group = reset_game(
+                    party, npc_group, enemy_group, flag_group, web_group, current_map, CURRENT_LEVEL
                 )
 
         # --- ÇİZİM ---
-        screen.fill(SKY_BLUE)
+        draw_background(screen, scroll_x)
         
-        # Objeleri kaydırarak çiz
         for tile in tile_group: tile.draw_scrolled(screen, scroll_x)
         for hazard in hazard_group: hazard.draw_scrolled(screen, scroll_x)
         for flag in flag_group: flag.draw_scrolled(screen, scroll_x)
         for enemy in enemy_group: enemy.draw_scrolled(screen, scroll_x)
+        for web in web_group: web.draw_scrolled(screen, scroll_x)
         
-        # NPC ve Etkileşim Uyarısı
         can_interact = False
         for npc in npc_group:
             npc.draw_scrolled(screen, scroll_x)
-            if npc.check_proximity(player.rect, scroll_x, screen, COMPANION_ACTIVE):
+            already_recruited = False
+            if npc.check_proximity(active_player.rect, scroll_x, screen, already_recruited):
                 draw_prompt(screen, npc.rect.centerx - scroll_x, npc.rect.top - 20)
                 can_interact = True
 
-        # Karakterler
-        player.draw(screen, scroll_x)
-        if companion_group.sprite: companion_group.sprite.draw(screen, scroll_x)
+        for p in party:
+            p.draw(screen, scroll_x)
 
-        # Diyalog Kutusu
         if GAME_STATE == 'dialogue':
             draw_dialogue_box(screen, DIALOGUE_OPTION)
 
-        # --- GEÇİŞ ANİMASYONU ---
+        finished_count = sum(1 for p in party if pygame.sprite.spritecollide(p, flag_group, False))
+        grapple_status = "VAR" if active_player.has_grapple else "YOK"
+        info_text = f"Ekip: {len(party)} | Hedef: {finished_count}/{len(party)} | P{active_player.p_index} | Ağ: {grapple_status}"
+        
+        text_surface = ui_font.render(info_text, True, (0, 0, 0)) 
+        screen.blit(text_surface, (20, 20))
+
         if GAME_STATE == 'transition_out':
-            # Ekranı kapat (Siyah kare büyür)
             TRANSITION_RADIUS += TRANSITION_SPEED
             draw_transition(screen)
             
-            # Ekran tamamen kapandıysa Bölüm Değiştir
             if TRANSITION_RADIUS > MAX_RADIUS * 1.5:
                 if CURRENT_LEVEL == 1:
                     CURRENT_LEVEL = 2
                     current_map = LEVEL_2_MAP
-                    player.start_pos = (200, 800) 
-                
                 elif CURRENT_LEVEL == 2:
                     CURRENT_LEVEL = 3
                     current_map = LEVEL_3_MAP
-                    player.start_pos = (200, 800)
-                
+                elif CURRENT_LEVEL == 3:
+                    CURRENT_LEVEL = 4
+                    current_map = LEVEL_4_MAP
                 else:
-                    print("OYUN BİTTİ! BAŞA DÖNÜLÜYOR...")
                     CURRENT_LEVEL = 1
                     current_map = LEVEL_1_MAP
-                    player.start_pos = (200, 800)
-                    COMPANION_ACTIVE = False # Başa dönünce yoldaş sıfırlanır
-
-                # Yeni haritayı yükle
-                scroll_x, tile_group, hazard_group, npc_group, enemy_group, flag_group = reset_game(
-                    player, companion_group, npc_group, enemy_group, flag_group, current_map
-                )
                 
+                scroll_x, tile_group, hazard_group, npc_group, enemy_group, flag_group, web_group = reset_game(
+                    party, npc_group, enemy_group, flag_group, web_group, current_map, CURRENT_LEVEL
+                )
                 GAME_STATE = 'transition_in'
 
         if GAME_STATE == 'transition_in':
-            # Ekranı aç (Siyah kare küçülür)
             TRANSITION_RADIUS -= TRANSITION_SPEED
             draw_transition(screen)
             if TRANSITION_RADIUS <= 0:

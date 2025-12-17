@@ -7,7 +7,6 @@ class NPC(pygame.sprite.Sprite):
         self.variant = variant
         self.frames = []
         
-        # Hangi tür NPC ise onun görselini yükle
         try:
             if variant == 'duck':
                 sheet = pygame.image.load('assets/duck_wolk.png').convert_alpha()
@@ -17,8 +16,12 @@ class NPC(pygame.sprite.Sprite):
                 sheet = pygame.image.load('assets/seagull_wolk.png').convert_alpha()
                 frame_count = 5
                 scale = 2.5
+            elif variant == 'twi':
+                sheet = pygame.image.load('assets/twi_wolk.png').convert_alpha()
+                # Twi'nin 3 kare yürüme animasyonu olduğunu varsayıyoruz (twi_wolk.png)
+                frame_count = 3 
+                scale = 0.9
             else:
-                # Varsayılan
                 sheet = pygame.image.load('assets/duck_wolk.png').convert_alpha()
                 frame_count = 2
                 scale = 1.25
@@ -33,7 +36,6 @@ class NPC(pygame.sprite.Sprite):
                 surface = pygame.Surface((frame_width, sheet_height), pygame.SRCALPHA)
                 surface.blit(sheet, (0, 0), (i * frame_width, 0, frame_width, sheet_height))
                 scaled = pygame.transform.scale(surface, (target_size, target_size))
-                # NPC oyuncuya baksın (Sola dönük)
                 flipped = pygame.transform.flip(scaled, True, False)
                 self.frames.append(flipped)
             
@@ -44,14 +46,12 @@ class NPC(pygame.sprite.Sprite):
 
         self.frame_index = 0
         self.image = self.frames[0]
-        # Yere basacak şekilde konumlandır
         self.rect = self.image.get_rect(midbottom=(x + TILE_SIZE//2, y + TILE_SIZE))
         self.last_update = pygame.time.get_ticks()
 
     def animate(self):
-        # NPC olduğu yerde beklerken hafif hareket etsin
         now = pygame.time.get_ticks()
-        if now - self.last_update > 200: # Daha yavaş animasyon
+        if now - self.last_update > 200: 
             self.last_update = now
             self.frame_index = (self.frame_index + 1) % len(self.frames)
             self.image = self.frames[self.frame_index]
@@ -63,7 +63,6 @@ class NPC(pygame.sprite.Sprite):
             
     def check_proximity(self, player_rect, scroll_x, screen, already_recruited):
         distance = abs(self.rect.centerx - player_rect.centerx)
-        # Eğer bu bölümün karakteri zaten alındıysa konuşma balonu çıkmasın
         if distance < 150 and not already_recruited:
             return True
         return False

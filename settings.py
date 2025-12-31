@@ -3,107 +3,78 @@ import pygame
 # Ekran Ayarları
 pygame.init()
 INFO = pygame.display.Info()
+# Varsayılan olarak Fullscreen başlasın ama değiştirilebilir olsun
 SCREEN_WIDTH = INFO.current_w
 SCREEN_HEIGHT = INFO.current_h
 FPS = 60
 
 # Fizik Ayarları
 GRAVITY = 0.8
-JUMP_STRENGTH = -15
-MAX_SPEED = 10
-ACCELERATION = 0.5
+JUMP_STRENGTH = -16
+MAX_SPEED = 8      # Hız biraz düşürüldü, daha kontrollü olsun
+ACCELERATION = 0.6
 FRICTION = 0.88
 ANIMATION_SPEED = 100
 
 # Ağ (Grapple) Ayarları
-ROPE_LENGTH_MAX = 700   # Menzili biraz arttırdım
-ROPE_SPEED = 25         # Ağın gitme hızı arttı
-SWING_FORCE = 1.2       # Sallanma kuvveti arttı (Hızlanmak için)
-REEL_SPEED = 8          # Space'e basınca çekme hızı
+ROPE_LENGTH_MAX = 700   
+ROPE_SPEED = 25         
+SWING_FORCE = 1.2       
+REEL_SPEED = 8          
 ARROW_LENGTH = 80       
 
 # Boyutlar
 TILE_SIZE = 64
 PLAYER_SCALE = 2.5
-CHAR_WIDTH = 40
-CHAR_HEIGHT = 60
 VISUAL_Y_OFFSET = 55 
 
 # Renkler
 SKY_BLUE = (135, 206, 250)
-UI_BG_COLOR = (0, 0, 0, 180)
+UI_BG_COLOR = (0, 0, 0, 200) # Biraz daha koyu
 TEXT_COLOR = (255, 255, 255)
 SELECTION_COLOR = (255, 215, 0)
 TRANSITION_COLOR = (0, 0, 0)
 ROPE_COLOR = (255, 255, 255)
 ARROW_COLOR = (255, 50, 50) 
 
-# --- HARİTALAR ---
-# (Haritalar aynı kalabilir, buraya tekrar kopyalamıyorum, level_map.py'den çekecek)
-LEVEL_1_MAP = [
-    "                                                                                                                                                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                                                                                                                                                ",
-    "                              K K K                                                                                       KKK                                                                                                       ",
-    "                              K K K                                                                                       K K                                                                                                       ",
-    "                          KKKKKKKKKKKKK                                                                                  KKKKK                                                                                                      ",
-    "                                                                                                                        KKKKKKK                                                                                                     ",
-    "               K            K        K                                                                                 KKKKKKKKK                                                                                                    ",
-    "              KKK          KKK       K                             K  K  K                                            KKKKKKKKKKK                                                                                                   ",
-    "             KKKKK  K  K  K   K  K   KKKKK      K                    K  K  K                            XXXX           KKKKKKKKKKKKK                                                                                                  ",
-    "            KKKKKKK K  K  K   K  K  KKKKKKK                          KKKKKKKKKKKK                       XX            KKKKKKKKKKKKKKK                                                                                                 ",
-    " XXXXX  K  KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK  K  XX  K K  K  K   K XX  K K  K  K KKKKKKKKKKKKK   KK  K    K   K   K   K   K  K  K  K   K  K   K  XXX  K   XXX  KK   K   K  KXXXK   K  K  K  K  KKKKKKKKKKKKKKKKKK                    ",
-    " XXXXX WKW KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK W  W XX  WWWWWWWWW W   XX   W TWW  W KKKKKKKKKKKK  T W   WT TW    WTTWWWW WTTWWWW TWWWW TTWWWW TWWW TXXXX  T   XX  WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  KKKKKKKKKKKKKKKKKKK F                  ",
-    " XXXXX     KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK      XXX               XXX   D       KKKKKKKKKKKK                  XX                       XXXXX      XXX         D                           KKKKKKKKKKKKKKKKKKKKK   FFF                  ",
-    " XXXXX     KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK      XXX               XXX           KKKKKKKKKKKK        D         XX                      XXXXXX      XXX                                    KKKKKKKKKKKKKKKKKKKKKKK  FFFFF                  ",
-    "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  WW WW  XXXXXXXXXXXXXXX  WW WW  XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  WW WW  XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXTTTTTTTXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  WW WW  TTTTTTTTTTTTTTT  WW WW  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  WW WW  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
-]
+# OYUN DURUMLARI
+STATE_MENU = 'menu'
+STATE_MAP = 'map'
+STATE_GAME = 'game'
+STATE_SETTINGS = 'settings'
 
-# LEVEL 2: DÜZLÜK VE ÖRDEK (NPC)
-# 'N' harfi Duck NPC'sini temsil eder
-LEVEL_2_MAP = [
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                      N                                                                                         ",
-    " XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                                         ",
-    " TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT                                                         ",
-    " TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT                                                         ",
-]
-# LEVEL 3: BİRLİKTE MÜCADELE (Co-op)
-# Daha zorlu, düşmanlı ve sulu bir parkur.
-LEVEL_3_MAP = [
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                ",
-    "                                                                         K                                                                                                                      ",
-    "                                                                        KKK                                                                                                                     ",
-    "                  K                                                    KKKKK                                                        F                                                           ",
-    "                 KKK        D                                         KKKKKKK                 D                                    FFF                                                          ",
-    "                KKKKK      XXXX                                      KKKKKKKKK               XXXX                                 FFFFF                                                         ",
-    "               KKKKKKK     TTTT                 K                   KKKKKKKKKKK              TTTT                                FFFFFFF                                                        ",
-    " XX    D      KKKKKKKKK    TTTT                KKK                 KKKKKKKKKKKKK             TTTT          XX            XX     FFFFFFFFF                                                       ",
-    " XX   XXXX   KKKKKKKKKKK   TTTT   W     W     KKKKK     W    W    KKKKKKKKKKKKKKK    W    W  TTTT   W      XX  W      W  XX    FFFFFFFFFFF                                                      ",
-    " XX   TTTT  KKKKKKKKKKKKK  TTTT  WWW   WWW   KKKKKKK   WWW  WWW  KKKKKKKKKKKKKKKKK  WWW  WWW TTTT  WWW    XXXXWWW    WWWXXXX   TTTTTTTTTTT                                                      ",
-    "XXXX  TTTT  TTTTTTTTTTTTT  TTTT  WWWWWWWWW  KKKKKKKKK  WWWWWWWW  TTTTTTTTTTTTTTTTT  WWWWWWWW TTTT  WWWW  XXXXXXWWWW  WWXXXXXX  TTTTTTTTTTT                                                      ",
-    "TTTT  TTTT  TTTTTTTTTTTTT  TTTT  WWWWWWWWW  TTTTTTTTT  WWWWWWWW  TTTTTTTTTTTTTTTTT  WWWWWWWW TTTT  WWWW  TTTTTTWWWW  WWTTTTTT  TTTTTTTTTTT                                                      ",
-    "TTTT  TTTT  TTTTTTTTTTTTT  TTTT  WWWWWWWWW  TTTTTTTTT  WWWWWWWW  TTTTTTTTTTTTTTTTT  WWWWWWWW TTTT  WWWW  TTTTTTWWWW  WWTTTTTT  TTTTTTTTTTT                                                      ",
-    "TTTT  TTTT  TTTTTTTTTTTTT  TTTT  WWWWWWWWW  TTTTTTTTT  WWWWWWWW  TTTTTTTTTTTTTTTTT  WWWWWWWW TTTT  WWWW  TTTTTTWWWW  WWTTTTTT  TTTTTTTTTTT                                                      ",
-    "TTTT  TTTT  TTTTTTTTTTTTT  TTTT  WWWWWWWWW  TTTTTTTTT  WWWWWWWW  TTTTTTTTTTTTTTTTT  WWWWWWWW TTTT  WWWW  TTTTTTWWWW  WWTTTTTT  TTTTTTTTTTT                                                      ",
-]
+# GLOBAL AYARLAR DEPOSU
+GAME_SETTINGS = {
+    'fullscreen': True,
+    'volume': 10, # 0-10 arası
+    'language': 'TR',
+    'controls': 'Standard'
+}
+
+# KONTROL ŞEMALARI (Local Co-op için)
+CONTROLS = {
+    'ARROWS': {
+        'left': pygame.K_LEFT,
+        'right': pygame.K_RIGHT,
+        'up': pygame.K_UP,
+        'down': pygame.K_DOWN,
+        'jump': pygame.K_UP,
+        'grapple': pygame.K_SPACE,
+        'interact': pygame.K_p # P1 Etkileşim
+    },
+    'WASD': {
+        'left': pygame.K_a,
+        'right': pygame.K_d,
+        'up': pygame.K_w,
+        'down': pygame.K_s,
+        'jump': pygame.K_w,
+        'grapple': pygame.K_f, # P2 Ağ atma
+        'interact': pygame.K_e # P2 Etkileşim
+    }
+}
+
+# HARİTA AYARLARI
+MAP_NODE_SIZE = 40
+MAP_COLOR_LOCKED = (100, 100, 100)
+MAP_COLOR_UNLOCKED = (255, 215, 0) 
+MAP_COLOR_COMPLETED = (50, 200, 50)

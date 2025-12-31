@@ -1,13 +1,15 @@
 import pygame
 import math
+import random
 from settings import *
+from sprites import Particle 
 
-# Karakter Ayarları
+# --- KARAKTER AYARLARI ---
 CHAR_CONFIG = {
+    # Tavuk 'offset' değeri 55 (Yere tam basması için)
     'chicken': {'walk': 'assets/chicken.png', 'jump': 'assets/jump.png', 'frames': (6, 6), 'scale': 2.5, 'offset': 55, 'jump_power': -16, 'gravity_factor': 1.0},
     'duck': {'walk': 'assets/duck_wolk.png', 'jump': 'assets/duck_jump.png', 'frames': (2, 4), 'scale': 1.25, 'offset': 0, 'jump_power': -14, 'gravity_factor': 0.4},
     'seagull': {'walk': 'assets/seagull_wolk.png', 'jump': 'assets/seagull_jump.png', 'frames': (5, 5), 'scale': 2.5, 'offset': 0, 'jump_power': -22, 'gravity_factor': 1.0},
-    # YENİ KARAKTER: TWI (Daha küçük ve hızlı)
     'twi': {'walk': 'assets/twi_wolk.png', 'jump': 'assets/twi_jump.png', 'frames': (5, 5), 'scale': 0.9, 'offset': 0, 'jump_power': -15, 'gravity_factor': 0.8}
 }
 
@@ -42,6 +44,11 @@ class Player(pygame.sprite.Sprite):
         self.start_pos = (x, y)
         self.is_dead = False
         self.carrying_weight = 0
+        
+        # --- GAME JUICE (SQUASH & STRETCH) ---
+        self.scale_x = 1.0
+        self.scale_y = 1.0
+        self.land_particles_spawned = False 
         
         # --- TAŞIMA SİSTEMİ ---
         self.carrier = None      
@@ -148,7 +155,6 @@ class Player(pygame.sprite.Sprite):
             self.velocity.x *= 0.5 
             return
 
-        # --- NORMAL HAREKET ---
         self.carrying_weight = self.calculate_weight_above(party)
         speed_modifier = 1.0
         
@@ -156,10 +162,9 @@ class Player(pygame.sprite.Sprite):
             if self.char_type != 'seagull': 
                 speed_modifier = 0.2
         
-        # [YENİ] Twi karakteri daha hızlı hızlanır
         base_accel = ACCELERATION
         if self.char_type == 'twi':
-            base_accel *= 1.5  # %50 daha atik
+            base_accel *= 1.5 
 
         target_accel = base_accel * speed_modifier
         
@@ -192,6 +197,9 @@ class Player(pygame.sprite.Sprite):
             self.velocity.y = self.base_jump_power 
             self.on_ground = False
             self.jump_count += 1
+            
+            self.scale_x = 0.7
+            self.scale_y = 1.3
 
     def apply_gravity(self):
         if self.velocity.y > 0:
@@ -232,17 +240,18 @@ class Player(pygame.sprite.Sprite):
                 self.velocity.x -= math.cos(angle_to_center) * pull_strength
                 self.velocity.y -= math.sin(angle_to_center) * pull_strength
 
-        # [YENİ] HIZ LİMİTİ KONTROLÜ
         if self.grapple_state != 'active':
-            # Twi için maksimum hız daha fazla
             current_max_speed = MAX_SPEED
             if self.char_type == 'twi':
-                current_max_speed *= 1.4 # %40 daha hızlı koşabilir
+                current_max_speed *= 1.4
             
             if abs(self.velocity.x) > current_max_speed: 
                 self.velocity.x = current_max_speed * (1 if self.velocity.x > 0 else -1)
         
         if abs(self.velocity.x) < 0.1: self.velocity.x = 0
+        
+        self.scale_x += (1.0 - self.scale_x) * 0.1
+        self.scale_y += (1.0 - self.scale_y) * 0.1
 
     def fire_grapple(self, tiles):
         if not self.has_grapple: return
@@ -296,6 +305,11 @@ class Player(pygame.sprite.Sprite):
         for tile in tiles:
             if self.rect.colliderect(tile.rect):
                 if self.velocity.y > 0: 
+                    if self.velocity.y > 5: 
+                        self.scale_x = 1.4
+                        self.scale_y = 0.6
+                        self.land_particles_spawned = True 
+                        
                     self.rect.bottom = tile.rect.top
                     self.velocity.y = 0
                     self.on_ground = True
@@ -324,29 +338,30 @@ class Player(pygame.sprite.Sprite):
 
     def animate(self):
         now = pygame.time.get_ticks()
+        
         if self.grapple_state == 'active':
             self.status = 'jump' 
         elif not self.on_ground:
             self.status = 'jump'
+        else:
+            if abs(self.velocity.x) > 0.5:
+                self.status = 'walk'
+            else:
+                self.status = 'walk'
+                self.frame_index = 0 
+        
+        if (self.status == 'walk' and abs(self.velocity.x) > 0.5) or self.status == 'jump':
             if now - self.last_update > ANIMATION_SPEED:
                 self.last_update = now
-                self.frame_index = (self.frame_index + 1) % len(self.animations['jump'])
-        else:
-            self.status = 'walk'
-            if abs(self.velocity.x) > 0.5:
-                if now - self.last_update > ANIMATION_SPEED:
-                    self.last_update = now
-                    self.frame_index = (self.frame_index + 1) % len(self.animations['walk'])
-            else:
-                self.frame_index = 0
+                self.frame_index = (self.frame_index + 1) % len(self.animations[self.status])
 
-        if self.frame_index >= len(self.animations[self.status]): self.frame_index = 0
-        image = self.animations[self.status][self.frame_index]
-        if not self.facing_right:
-            image = pygame.transform.flip(image, True, False)
-        self.image = image
+        if self.frame_index >= len(self.animations[self.status]): 
+            self.frame_index = 0
+            
+        self.image = self.animations[self.status][self.frame_index]
 
-    def update(self, tiles, hazards, game_state, is_active_player, party):
+    # [DÜZELTME] particle_group argümanı buraya eklendi
+    def update(self, tiles, hazards, game_state, is_active_player, party, particle_group):
         if self.carrier:
             if self.carrier in party and not self.carrier.is_dead:
                 self.rect.bottom = self.carrier.rect.top
@@ -365,6 +380,28 @@ class Player(pygame.sprite.Sprite):
         self.physics_update()
         self.check_collisions(tiles, hazards, party)
         self.animate()
+        
+        if self.on_ground and abs(self.velocity.x) > 1:
+            if random.random() < 0.2: 
+                offset_x = 10 if self.velocity.x > 0 else -10
+                particle_group.add(Particle(
+                    self.rect.centerx - offset_x, self.rect.bottom,
+                    velocity=[random.uniform(-0.5, 0.5), random.uniform(-1, -0.5)],
+                    radius=random.randint(2, 4),
+                    color=(220, 220, 220), 
+                    life=20
+                ))
+
+        if self.land_particles_spawned:
+            self.land_particles_spawned = False
+            for _ in range(5):
+                particle_group.add(Particle(
+                    self.rect.centerx, self.rect.bottom,
+                    velocity=[random.uniform(-3, 3), random.uniform(-1, -0.1)],
+                    radius=random.randint(3, 6),
+                    color=(255, 255, 255),
+                    life=30
+                ))
 
     def draw(self, screen, scroll_x):
         center_x = self.rect.centerx - scroll_x
@@ -391,13 +428,22 @@ class Player(pygame.sprite.Sprite):
             pygame.draw.line(screen, color, (center_x, center_y), (grapple_screen_x, grapple_screen_y), 3)
             pygame.draw.circle(screen, color, (grapple_screen_x, grapple_screen_y), 5)
 
-        image_rect = self.image.get_rect()
-        image_rect.centerx = self.rect.centerx - scroll_x
-        image_rect.bottom = self.rect.bottom
-        image_rect.y += self.visual_offset
-        screen.blit(self.image, image_rect)
+        img_to_draw = self.image
+        if not self.facing_right:
+            img_to_draw = pygame.transform.flip(img_to_draw, True, False)
+            
+        new_w = int(img_to_draw.get_width() * self.scale_x)
+        new_h = int(img_to_draw.get_height() * self.scale_y)
+        scaled_img = pygame.transform.scale(img_to_draw, (new_w, new_h))
+        
+        draw_rect = scaled_img.get_rect()
+        draw_rect.centerx = self.rect.centerx - scroll_x
+        draw_rect.bottom = self.rect.bottom
+        draw_rect.y += self.visual_offset * self.scale_y 
+        
+        screen.blit(scaled_img, draw_rect)
         
         label_x = self.rect.centerx - scroll_x - (self.label_bg.get_width() // 2)
-        label_y = image_rect.top - 25
+        label_y = draw_rect.top - 25
         screen.blit(self.label_bg, (label_x, label_y))
         screen.blit(self.label_surf, (label_x + 2, label_y + 2))

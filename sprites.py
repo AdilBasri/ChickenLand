@@ -2,6 +2,7 @@ import pygame
 import math
 from settings import *
 
+# --- STANDART BLOKLAR ---
 class Tile(pygame.sprite.Sprite):
     def __init__(self, x, y, tile_type):
         super().__init__()
@@ -63,6 +64,47 @@ class WebItem(pygame.sprite.Sprite):
         if -TILE_SIZE < self.rect.x - scroll_x < SCREEN_WIDTH:
             screen.blit(self.image, (self.rect.x - scroll_x, self.rect.y))
 
+# --- EKSİK OLAN PARTICLE SINIFI ---
+class Particle(pygame.sprite.Sprite):
+    def __init__(self, x, y, velocity, radius, color, life):
+        super().__init__()
+        self.radius = radius
+        self.color = color
+        self.velocity = list(velocity)
+        self.life = life          # Kaç kare yaşayacak
+        self.original_life = life
+        
+        self.image = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(self.image, color, (radius, radius), radius)
+        self.rect = self.image.get_rect(center=(x, y))
+        
+    def update(self):
+        # Hareket
+        self.rect.x += self.velocity[0]
+        self.rect.y += self.velocity[1]
+        
+        # Ömür tüketme
+        self.life -= 1
+        
+        # Efekt: Süre azaldıkça küçül ve şeffaflaş
+        if self.life > 0:
+            ratio = self.life / self.original_life
+            new_size = int(self.radius * 2 * ratio)
+            if new_size > 0:
+                # Yeni boyutta bir yüzey oluştur
+                self.image = pygame.Surface((new_size, new_size), pygame.SRCALPHA)
+                # Alpha (Şeffaflık) ayarı
+                alpha = int(255 * ratio)
+                color_with_alpha = (*self.color, alpha)
+                pygame.draw.circle(self.image, color_with_alpha, (new_size//2, new_size//2), new_size//2)
+        else:
+            self.kill() # Öldür
+
+    def draw_scrolled(self, screen, scroll_x):
+        if -TILE_SIZE < self.rect.x - scroll_x < SCREEN_WIDTH:
+            screen.blit(self.image, (self.rect.x - scroll_x, self.rect.y))
+
+# --- WAVE GRASS (DALGALANAN ÇİMEN) ---
 class WaveGrass(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
@@ -72,10 +114,7 @@ class WaveGrass(pygame.sprite.Sprite):
         self.animation_speed = 0.15 
         self.image = self.frames[self.frame_index]
         
-        # [GÜNCELLEME] KONUMLANDIRMA DÜZELTİLDİ
-        # x, y: Toprak bloğunun sol üst köşesi.
-        # y + 15: Çimenin altını, toprağın üstünden sadece 15 piksel aşağıya koyuyoruz.
-        # Böylece çimenin %80'i toprağın üzerinde (havada/yüzeyde) duruyor gibi görünecek.
+        # Toprağın üstünde, hafifçe içine girmiş (Pop-out efekti)
         self.rect = self.image.get_rect(bottomleft=(x, y + 15))
         
         self.is_animating = False

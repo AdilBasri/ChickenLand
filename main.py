@@ -5,32 +5,30 @@ from settings import *
 from sprites import Tile, Flag, WebItem, WaveGrass
 from player import Player
 from npcs import NPC, Enemy
-from ui import draw_prompt, draw_dialogue_box, MainMenu, WorldMap # YENİ SINIFLAR EKLENDİ
+from ui import draw_prompt, draw_dialogue_box, MainMenu, WorldMap, SettingsMenu
 from level_map import LEVEL_1_MAP, LEVEL_2_MAP, LEVEL_3_MAP, LEVEL_4_MAP, LEVEL_5_MAP, LEVEL_6_MAP
 
 # --- GLOBAL DURUMLAR ---
-CURRENT_STATE = STATE_MENU # Başlangıç durumu MENÜ
+CURRENT_STATE = STATE_MENU
 CURRENT_LEVEL_ID = 1
+DIALOGUE_MODE = None 
+DIALOGUE_TARGET_NPC = None
 
-# --- PARTİ SİSTEMİ ---
 party = []          
-active_index = 0    
-
-# --- EFEKT SİSTEMİ ---
 particle_group = pygame.sprite.Group()
 
-# --- GEÇİŞ ANİMASYONU ---
 TRANSITION_RADIUS = 0
 MAX_RADIUS = int(math.sqrt(SCREEN_WIDTH**2 + SCREEN_HEIGHT**2)) 
 TRANSITION_SPEED = 25 
 TRANSITION_ANGLE = 0
 IS_TRANSITIONING = False
 
-# --- UI NESNELERİ ---
+# UI
 main_menu = None
 world_map = None
+settings_menu = None
 
-# --- PARALLAX SISTEMI SINIFI ---
+# --- PARALLAX ---
 class ParallaxBackground:
     def __init__(self):
         self.layers = []
@@ -76,12 +74,50 @@ class ParallaxBackground:
                     screen.blit(img, (draw_x, y_pos))
                     draw_x += width
 
+# --- SU FİZİĞİ SİMÜLASYONU ---
+def simulate_water_flow(string_map):
+    grid = [list(row) for row in string_map]
+    if not grid: return []
+    
+    max_cols = max(len(row) for row in grid)
+    for row in grid:
+        if len(row) < max_cols:
+            row.extend([' '] * (max_cols - len(row)))
+            
+    rows = len(grid)
+    cols = max_cols
+    
+    for _ in range(10): 
+        new_grid = [row[:] for row in grid]
+        changed = False
+        
+        for r in range(rows - 1): 
+            for c in range(1, cols - 1):
+                if grid[r][c] == 'W':
+                    if grid[r+1][c] == ' ':
+                        new_grid[r+1][c] = 'W'
+                        changed = True
+                    elif grid[r+1][c] != ' ':
+                        if grid[r][c-1] == ' ':
+                            new_grid[r][c-1] = 'W'
+                            changed = True
+                        if grid[r][c+1] == ' ':
+                            new_grid[r][c+1] = 'W'
+                            changed = True
+                            
+        grid = new_grid
+        if not changed: break
+
+    return grid
+
 def create_level(level_map, level_num, party_list):
+    processed_map = simulate_water_flow(level_map)
+
     tiles, hazards, npcs, enemies, flags, web_items, wave_grass = (pygame.sprite.Group() for _ in range(7))
     owned_types = [p.char_type for p in party_list]
     grapple_owned = any(p.has_grapple for p in party_list)
 
-    for r, row in enumerate(level_map):
+    for r, row in enumerate(processed_map):
         for c, cell in enumerate(row):
             x, y = c * TILE_SIZE, r * TILE_SIZE
             if cell == 'X': tiles.add(Tile(x, y, 'grass'))
@@ -111,7 +147,6 @@ def reset_game(party_list, level_id):
     
     particle_group.empty()
     
-    # Harita seçimi
     current_map = LEVEL_1_MAP
     if level_id == 2: current_map = LEVEL_2_MAP
     elif level_id == 3: current_map = LEVEL_3_MAP
@@ -131,7 +166,10 @@ def draw_transition(screen):
     TRANSITION_ANGLE += 5
 
 def main():
-    global CURRENT_STATE, DIALOGUE_OPTION, CURRENT_LEVEL_ID, TRANSITION_RADIUS, active_index, party, IS_TRANSITIONING, main_menu, world_map
+    global CURRENT_STATE, DIALOGUE_OPTION, CURRENT_LEVEL_ID, TRANSITION_RADIUS, party, IS_TRANSITIONING, main_menu, world_map, settings_menu
+    global DIALOGUE_MODE, DIALOGUE_TARGET_NPC
+
+    pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.KEYUP, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION])
     
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     pygame.display.set_caption("Chick: Going To Chicken Land")
@@ -143,156 +181,207 @@ def main():
     parallax_bg = ParallaxBackground()
     main_menu = MainMenu()
     world_map = WorldMap()
+    settings_menu = SettingsMenu()
 
-    # Başlangıç Partisi
-    p1 = Player(200, 500, char_type='chicken', p_index=1)
-    party = [p1]
+    # --- TEK OYUNCULU BAŞLANGIÇ ---
+    p1 = Player(200, 500, char_type='chicken', p_index=1, input_scheme='ARROWS')
+    party = [p1] 
+    active_index = 0
     
-    # Grupları tanımla (Boş olarak)
     tile_group, hazard_group, npc_group, enemy_group, flag_group, web_group, wave_grass_group = (pygame.sprite.Group() for _ in range(7))
     scroll_x = 0
-    can_interact = False
     
     while True:
-        # --- INPUT İŞLEMLERİ ---
+        if CURRENT_STATE == STATE_GAME: pygame.mouse.set_visible(False)
+        else: pygame.mouse.set_visible(True)
+
         events = pygame.event.get()
         for event in events:
             if event.type == pygame.QUIT: pygame.quit(), sys.exit()
+            
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                if CURRENT_STATE == STATE_GAME: CURRENT_STATE = STATE_MAP # Oyundan haritaya çık
-                elif CURRENT_STATE == STATE_MAP: CURRENT_STATE = STATE_MENU # Haritadan menüye çık
-                else: pygame.quit(), sys.exit()
+                if CURRENT_STATE == STATE_GAME: CURRENT_STATE = STATE_MAP 
+                elif CURRENT_STATE == STATE_MAP: CURRENT_STATE = STATE_MENU 
+                elif CURRENT_STATE == STATE_SETTINGS: CURRENT_STATE = STATE_MENU
 
-            # MENÜ DURUMU
+            # --- STATE MACHINES ---
             if CURRENT_STATE == STATE_MENU:
                 action = main_menu.handle_input(event)
-                if action == "YENI OYUN":
-                    CURRENT_STATE = STATE_MAP
-                elif action == "CIKIS":
-                    pygame.quit(), sys.exit()
+                if action == "YENI OYUN": CURRENT_STATE = STATE_MAP
+                elif action == "AYARLAR": CURRENT_STATE = STATE_SETTINGS
+                elif action == "CIKIS": pygame.quit(), sys.exit()
             
-            # HARİTA DURUMU
+            elif CURRENT_STATE == STATE_SETTINGS:
+                res = settings_menu.handle_input(event)
+                if res == "BACK": CURRENT_STATE = STATE_MENU
+
             elif CURRENT_STATE == STATE_MAP:
                 selected_level = world_map.handle_input(event)
                 if selected_level:
                     CURRENT_LEVEL_ID = selected_level
-                    # Bölümü Yükle
                     tile_group, hazard_group, npc_group, enemy_group, flag_group, web_group, wave_grass_group = reset_game(party, CURRENT_LEVEL_ID)
                     CURRENT_STATE = STATE_GAME
             
-            # OYUN DURUMU (Diyalog, Karakter Değişimi vb.)
             elif CURRENT_STATE == STATE_GAME:
+                # Aktif oyuncu yönetimi
                 if active_index >= len(party): active_index = 0
                 active_player = party[active_index]
 
                 if event.type == pygame.KEYDOWN:
+                    # Karakter Değiştirme
                     if event.key == pygame.K_c:
-                        if len(party) > 1:
-                            active_player.grapple_state = 'none' 
-                            active_index = (active_index + 1) % len(party)
-                    if event.key == pygame.K_UP and active_player.grapple_state != 'aiming':
-                             active_player.jump()
-                    if event.key == pygame.K_e and can_interact:
-                        DIALOGUE_OPTION = 0 # Sıfırla
-                        # Diyalog modu için basit bir duraklatma veya state değişimi yapılabilir
-                        # Şimdilik direkt diyalog çizimini oyun döngüsünde yapıyoruz.
-                        pass 
-                
-                if event.type == pygame.KEYUP and event.key == pygame.K_SPACE:
-                    if active_player.grapple_state == 'aiming':
-                        active_player.fire_grapple(tile_group)
+                         single_players = [p for p in party if p.input_scheme == CONTROLS['ARROWS']]
+                         if len(single_players) > 1:
+                             active_player.grapple_state = 'none'
+                             active_index = (active_index + 1) % len(party)
+                             # WASD oyuncusunu atla
+                             while party[active_index].input_scheme == CONTROLS['WASD']:
+                                 active_index = (active_index + 1) % len(party)
 
-        # --- UPDATE & DRAW İŞLEMLERİ ---
-        
+                    # [DÜZELTME] Zıplama Kontrolü - Sadece Aktif Karakter
+                    for i, p in enumerate(party):
+                        controls = p.input_scheme
+                        if event.key == controls['jump'] and p.grapple_state != 'aiming':
+                            # Eğer karakter WASD kullanıyorsa (Co-op) HER ZAMAN zıplar
+                            # Eğer ARROWS kullanıyorsa SADECE sırası gelen (active_index) zıplar
+                            if p.scheme_name == 'WASD' or (p.scheme_name == 'ARROWS' and i == active_index):
+                                p.jump()
+
+                    # Etkileşim "E" Tuşu
+                    if event.key == pygame.K_e:
+                        for npc in npc_group:
+                            if npc.check_proximity(party[0].rect, scroll_x, screen, False):
+                                CURRENT_STATE = 'dialogue'
+                                DIALOGUE_MODE = 'recruit'
+                                DIALOGUE_TARGET_NPC = npc
+                                DIALOGUE_OPTION = 0
+                                break
+                
+                if event.type == pygame.KEYUP:
+                    # [DÜZELTME] Ağ Atma - Sadece Aktif Karakter
+                    for i, p in enumerate(party):
+                        if event.key == p.input_scheme['grapple']:
+                             # Yine aynı kontrol: WASD ise veya sırası gelen ARROWS ise
+                             if p.scheme_name == 'WASD' or (p.scheme_name == 'ARROWS' and i == active_index):
+                                if p.grapple_state == 'aiming': p.fire_grapple(tile_group)
+
+            # --- DİYALOG KONTROLLERİ ---
+            elif CURRENT_STATE == 'dialogue':
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_LEFT: DIALOGUE_OPTION = 0
+                    elif event.key == pygame.K_RIGHT: DIALOGUE_OPTION = 1
+                    elif event.key == pygame.K_RETURN:
+                        # 1. SORU: Katılsın mı?
+                        if DIALOGUE_MODE == 'recruit':
+                            if DIALOGUE_OPTION == 0: # EVET
+                                DIALOGUE_MODE = 'coop_ask'
+                                DIALOGUE_OPTION = 0
+                            else: # HAYIR
+                                CURRENT_STATE = STATE_GAME 
+                        
+                        # 2. SORU: Co-op?
+                        elif DIALOGUE_MODE == 'coop_ask':
+                            new_scheme = 'ARROWS'
+                            if DIALOGUE_OPTION == 0: # EVET (Co-op)
+                                new_scheme = 'WASD'
+                            else: # HAYIR (Single)
+                                new_scheme = 'ARROWS'
+                            
+                            new_p_index = len(party) + 1
+                            new_char = Player(DIALOGUE_TARGET_NPC.rect.x, DIALOGUE_TARGET_NPC.rect.y, 
+                                            char_type=DIALOGUE_TARGET_NPC.variant, 
+                                            p_index=new_p_index, 
+                                            input_scheme=new_scheme)
+                            
+                            if party[0].has_grapple: new_char.has_grapple = True
+                            party.append(new_char)
+                            DIALOGUE_TARGET_NPC.kill()
+                            
+                            CURRENT_STATE = STATE_GAME
+
+        # --- UPDATE & DRAW ---
         if CURRENT_STATE == STATE_MENU:
             main_menu.draw(screen)
 
+        elif CURRENT_STATE == STATE_SETTINGS:
+            settings_menu.draw(screen)
+
         elif CURRENT_STATE == STATE_MAP:
-            screen.fill((20, 20, 40)) # Harita arkaplanı (görsel yoksa)
+            screen.fill((20, 20, 40)) 
             world_map.draw(screen)
 
-        elif CURRENT_STATE == STATE_GAME:
-            active_player = party[active_index]
-            
-            # SCROLL
-            target_scroll = active_player.rect.centerx - SCREEN_WIDTH / 2
+        elif CURRENT_STATE == STATE_GAME or CURRENT_STATE == 'dialogue':
+            targets = [p for p in party if not p.is_dead]
+            if targets:
+                avg_x = sum(p.rect.centerx for p in targets) / len(targets)
+                target_scroll = avg_x - SCREEN_WIDTH / 2
+            else: target_scroll = 0
+                
             if target_scroll < 0: target_scroll = 0
             scroll_x += (target_scroll - scroll_x) * 0.1
 
-            # UPDATE
-            wave_grass_group.update(party)
-            particle_group.update()
-            
-            any_dead = False
-            for p in party:
-                p.update(tile_group, hazard_group, 'playing', (p == active_player), party, particle_group)
-                if pygame.sprite.spritecollide(p, enemy_group, False): p.is_dead = True
-                if p.is_dead: any_dead = True
-                # Ağ özelliği paylaşımı
-                if pygame.sprite.spritecollide(p, web_group, True):
-                    for member in party: member.has_grapple = True
+            if CURRENT_STATE == STATE_GAME:
+                wave_grass_group.update(party)
+                particle_group.update()
+                
+                any_dead = False
+                for i, p in enumerate(party):
+                    # Karakter update ederken 'is_active' bilgisini gönderiyoruz
+                    is_active = (i == active_index)
+                    p.update(tile_group, hazard_group, 'playing', party, particle_group, is_active)
+                    
+                    if pygame.sprite.spritecollide(p, enemy_group, False): p.is_dead = True
+                    if p.is_dead: any_dead = True
+                    if pygame.sprite.spritecollide(p, web_group, True):
+                        for member in party: member.has_grapple = True
 
-            # NPC Etkileşim (Karakter Katılımı)
-            can_interact = False
-            for npc in npc_group:
-                if npc.check_proximity(active_player.rect, scroll_x, screen, False):
-                    # Eğer E'ye basıldıysa ve diyalog çiziliyorsa (Bu kısım basit tutuldu)
-                    keys = pygame.key.get_pressed()
-                    if keys[pygame.K_e]:
-                        # Karakteri ekle (Basit versiyon)
-                        new_p_index = len(party) + 1
-                        new_type = npc.variant
-                        new_char = Player(npc.rect.x, npc.rect.y, char_type=new_type, p_index=new_p_index)
-                        if active_player.has_grapple: new_char.has_grapple = True
-                        party.append(new_char)
-                        npc.kill() # NPC'yi yok et
-                    else:
-                        can_interact = True
+                for enemy in enemy_group: enemy.update(tile_group, party[0])
+                web_group.update()
 
-            # Düşmanlar & Objeler
-            for enemy in enemy_group: enemy.update(tile_group, active_player)
-            web_group.update()
-
-            # Bölüm Sonu Kontrolü
-            all_finished = True
-            for p in party:
-                if not pygame.sprite.spritecollide(p, flag_group, False):
-                    all_finished = False
-                    break
-            
-            if all_finished:
-                IS_TRANSITIONING = True # Geçişi başlat
-
-            # Ölüm Kontrolü
-            if any_dead:
-                 tile_group, hazard_group, npc_group, enemy_group, flag_group, web_group, wave_grass_group = reset_game(party, CURRENT_LEVEL_ID)
-
-            # ÇİZİM
             if parallax_bg: parallax_bg.draw(screen, scroll_x)
             else: screen.fill(SKY_BLUE)
             
-            for group in [tile_group, hazard_group, flag_group, enemy_group, web_group, npc_group]:
+            for group in [tile_group, hazard_group, flag_group, enemy_group, web_group, npc_group, wave_grass_group, particle_group]:
                 for sprite in group:
                     if hasattr(sprite, 'draw_scrolled'): sprite.draw_scrolled(screen, scroll_x)
             
             for p in party: p.draw(screen, scroll_x)
-            for wg in wave_grass_group: wg.draw_scrolled(screen, scroll_x)
-            for pt in particle_group: pt.draw_scrolled(screen, scroll_x)
             
-            if can_interact: 
-                # En yakın NPC'nin üzerine E koy
-                if npc_group: draw_prompt(screen, npc_group.sprites()[0].rect.centerx - scroll_x, npc_group.sprites()[0].rect.top - 20)
-            
-            # UI
-            info_text = f"BOLUM: {CURRENT_LEVEL_ID} | P{active_player.p_index}"
+            if CURRENT_STATE == STATE_GAME:
+                for npc in npc_group:
+                    if npc.check_proximity(party[0].rect, scroll_x, screen, False):
+                         draw_prompt(screen, npc.rect.centerx - scroll_x, npc.rect.top - 20)
+
+            if CURRENT_STATE == 'dialogue':
+                if DIALOGUE_MODE == 'recruit':
+                    draw_dialogue_box(screen, DIALOGUE_OPTION, 
+                                      "YENİ KARAKTER!", 
+                                      "Bu karakteri ekibe almak istiyor musun?",
+                                      "EVET", "HAYIR")
+                elif DIALOGUE_MODE == 'coop_ask':
+                    draw_dialogue_box(screen, DIALOGUE_OPTION, 
+                                      "CO-OP MODU?", 
+                                      "İkinci oyuncu bu karakteri yönetmek ister mi?",
+                                      "EVET (WASD ile Oyna)", "HAYIR (Değişmeli Oyna)")
+
+            if CURRENT_STATE == STATE_GAME:
+                all_finished = True
+                for p in party:
+                    if not pygame.sprite.spritecollide(p, flag_group, False):
+                        all_finished = False
+                        break
+                if all_finished: IS_TRANSITIONING = True 
+
+                if any_dead:
+                     tile_group, hazard_group, npc_group, enemy_group, flag_group, web_group, wave_grass_group = reset_game(party, CURRENT_LEVEL_ID)
+
+            info_text = f"BOLUM: {CURRENT_LEVEL_ID}"
             screen.blit(ui_font.render(info_text, True, (0,0,0)), (20, 20))
 
-            # GEÇİŞ EFEKTİ (Bölüm Bittiğinde)
             if IS_TRANSITIONING:
                 TRANSITION_RADIUS += TRANSITION_SPEED
                 draw_transition(screen)
                 if TRANSITION_RADIUS > MAX_RADIUS * 1.5:
-                    # BÖLÜM GEÇİLDİ! Haritaya dön ve kilidi aç.
                     IS_TRANSITIONING = False
                     TRANSITION_RADIUS = 0
                     world_map.unlock_next_level(CURRENT_LEVEL_ID)

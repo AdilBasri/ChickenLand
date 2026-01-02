@@ -5,11 +5,13 @@ from settings import *
 from sprites import Particle 
 
 # --- KARAKTER AYARLARI ---
+# Tukan Eklendi: Ağır başlangıç, yüksek max hız
 CHAR_CONFIG = {
-    'chicken': {'walk': 'assets/chicken.png', 'jump': 'assets/jump.png', 'frames': (6, 6), 'scale': 2.5, 'offset': 55, 'jump_power': -16, 'gravity_factor': 1.0},
-    'duck': {'walk': 'assets/duck_wolk.png', 'jump': 'assets/duck_jump.png', 'frames': (2, 4), 'scale': 1.25, 'offset': 0, 'jump_power': -14, 'gravity_factor': 0.4},
-    'seagull': {'walk': 'assets/seagull_wolk.png', 'jump': 'assets/seagull_jump.png', 'frames': (5, 5), 'scale': 2.5, 'offset': 0, 'jump_power': -22, 'gravity_factor': 1.0},
-    'twi': {'walk': 'assets/twi_wolk.png', 'jump': 'assets/twi_jump.png', 'frames': (5, 5), 'scale': 0.9, 'offset': 0, 'jump_power': -15, 'gravity_factor': 0.8}
+    'chicken': {'walk': 'assets/chicken.png', 'jump': 'assets/jump.png', 'frames': (6, 6), 'scale': 2.5, 'offset': 55, 'jump_power': -16, 'gravity_factor': 1.0, 'max_speed': 8, 'accel': 0.6},
+    'duck': {'walk': 'assets/duck_wolk.png', 'jump': 'assets/duck_jump.png', 'frames': (2, 4), 'scale': 1.25, 'offset': 0, 'jump_power': -14, 'gravity_factor': 0.4, 'max_speed': 7, 'accel': 0.6},
+    'seagull': {'walk': 'assets/seagull_wolk.png', 'jump': 'assets/seagull_jump.png', 'frames': (5, 5), 'scale': 2.5, 'offset': 0, 'jump_power': -22, 'gravity_factor': 1.0, 'max_speed': 8, 'accel': 0.6},
+    'twi': {'walk': 'assets/twi_wolk.png', 'jump': 'assets/twi_jump.png', 'frames': (5, 5), 'scale': 0.9, 'offset': 0, 'jump_power': -15, 'gravity_factor': 0.8, 'max_speed': 9, 'accel': 0.9},
+    'tukan': {'walk': 'assets/tukan_wolk.png', 'jump': 'assets/tukan_jump.png', 'frames': (4, 4), 'scale': 1.2, 'offset': 0, 'jump_power': -12, 'gravity_factor': 1.0, 'max_speed': 15, 'accel': 0.15}
 }
 
 class Player(pygame.sprite.Sprite):
@@ -17,18 +19,22 @@ class Player(pygame.sprite.Sprite):
         super().__init__()
         self.char_type = char_type
         self.p_index = p_index
-        # Kontrol şemasını settings.py'dan alıyoruz
         self.input_scheme = CONTROLS[input_scheme] 
-        self.scheme_name = input_scheme # 'WASD' veya 'ARROWS' olarak sakla
+        self.scheme_name = input_scheme 
         
+        # Config Yükle
         config = CHAR_CONFIG.get(char_type, CHAR_CONFIG['chicken'])
         self.scale = config['scale']
         self.visual_offset = config['offset']
         self.base_jump_power = config['jump_power']
         self.gravity_factor = config['gravity_factor']
+        self.base_max_speed = config['max_speed']
+        self.base_accel = config['accel']
         
         self.animations = {'walk': [], 'jump': []}
-        self.import_character_assets(config['walk'], config['jump'], config['frames'])
+        # Frame sayıları configden gelir, Tukan için varsayılan (4,4)
+        frames = config.get('frames', (4,4))
+        self.import_character_assets(config['walk'], config['jump'], frames)
         
         self.frame_index = 0
         self.status = 'walk'
@@ -47,7 +53,7 @@ class Player(pygame.sprite.Sprite):
         self.is_dead = False
         self.carrying_weight = 0
         
-        # --- GAME JUICE (SQUASH & STRETCH) ---
+        # --- GAME JUICE ---
         self.scale_x = 1.0
         self.scale_y = 1.0
         self.land_particles_spawned = False 
@@ -64,13 +70,11 @@ class Player(pygame.sprite.Sprite):
         self.rope_length = 0      
         self.reeling = False        
 
-        # Etiket (Her karede render etmemek için init'te hazırla)
-        try:
-            self.font = pygame.font.Font('assets/font.ttf', 14)
-        except:
-            self.font = pygame.font.SysFont("Arial", 14, bold=True)
+        # Etiket
+        try: self.font = pygame.font.Font('assets/font.ttf', 14)
+        except: self.font = pygame.font.SysFont("Arial", 14, bold=True)
             
-        text = f"P{self.p_index} ({'OK' if input_scheme=='ARROWS' else 'WASD'})"
+        text = f"P{self.p_index}"
         self.label_surf = self.font.render(text, True, (255, 255, 255))
         self.label_bg = pygame.Surface((self.label_surf.get_width() + 6, self.label_surf.get_height() + 4))
         self.label_bg.fill((0, 0, 0))
@@ -115,22 +119,17 @@ class Player(pygame.sprite.Sprite):
         keys = pygame.key.get_pressed()
         controls = self.input_scheme 
 
-        # --- HİBRİT KONTROL MANTIĞI ---
-        # WASD kullanan (P2) her zaman hareket edebilir.
-        # ARROWS kullanan (P1) sadece sıra ondaysa (is_active_player) hareket edebilir.
+        # Hareket İzni
         should_move = False
-        if self.scheme_name == 'WASD':
-            should_move = True
-        elif self.scheme_name == 'ARROWS' and is_active_player:
-            should_move = True
+        if self.scheme_name == 'WASD': should_move = True
+        elif self.scheme_name == 'ARROWS' and is_active_player: should_move = True
         
-        # Eğer hareket sırası bunda değilse durdur ve fonksiyondan çık
         if not should_move:
             self.acceleration.x = 0
             self.reeling = False
             return 
 
-        # Taşıyıcıdan inme kontrolü
+        # Taşıyıcıdan inme
         if (keys[controls['left']] or keys[controls['right']] or 
             keys[controls['up']] or keys[controls['grapple']]):
             self.carrier = None
@@ -138,7 +137,7 @@ class Player(pygame.sprite.Sprite):
         self.acceleration.x = 0
         self.reeling = False
         
-        # --- AĞ MEKANİĞİ (AKTİFKEN) ---
+        # Grapple Active
         if self.grapple_state == 'active':
             if keys[controls['grapple']]:
                 self.reeling = True
@@ -148,22 +147,18 @@ class Player(pygame.sprite.Sprite):
             swing_power = SWING_FORCE
             if keys[controls['left']]: self.velocity.x -= swing_power
             if keys[controls['right']]: self.velocity.x += swing_power
-            
             if keys[controls['down']]: 
                 self.rope_length += 5
                 if self.rope_length > ROPE_LENGTH_MAX: self.rope_length = ROPE_LENGTH_MAX
             return 
 
-        # --- AĞ ATMA / NİŞAN ALMA ---
+        # Grapple Aiming
         if self.has_grapple and keys[controls['grapple']]:
-            if self.grapple_state == 'none':
-                self.grapple_state = 'aiming'
+            if self.grapple_state == 'none': self.grapple_state = 'aiming'
             
             aim_speed = 3
-            if keys[controls['up']]:
-                self.grapple_angle += aim_speed if self.facing_right else -aim_speed
-            if keys[controls['down']]:
-                self.grapple_angle -= aim_speed if self.facing_right else -aim_speed
+            if keys[controls['up']]: self.grapple_angle += aim_speed if self.facing_right else -aim_speed
+            if keys[controls['down']]: self.grapple_angle -= aim_speed if self.facing_right else -aim_speed
             
             if self.facing_right:
                 if self.grapple_angle > 80: self.grapple_angle = 80
@@ -177,18 +172,15 @@ class Player(pygame.sprite.Sprite):
             self.velocity.x *= 0.5 
             return
 
-        # --- HAREKET FİZİĞİ ---
+        # HAREKET
         self.carrying_weight = self.calculate_weight_above(party)
         speed_modifier = 1.0
         
         if self.carrying_weight > 0:
-            if self.char_type != 'seagull': 
-                speed_modifier = 0.2
+            if self.char_type != 'seagull': speed_modifier = 0.2
         
-        base_accel = ACCELERATION
-        if self.char_type == 'twi': base_accel *= 1.5 
-
-        target_accel = base_accel * speed_modifier
+        # Tukan ve diğerleri için accel
+        target_accel = self.base_accel * speed_modifier
         
         if keys[controls['right']]:
             self.acceleration.x = target_accel
@@ -201,44 +193,46 @@ class Player(pygame.sprite.Sprite):
 
     def jump(self):
         self.carrier = None 
-
         if self.grapple_state == 'active':
             self.grapple_state = 'none'
             self.velocity.y = -10
             return
-
-        if self.grapple_state == 'aiming':
-            return 
+        if self.grapple_state == 'aiming': return 
 
         can_jump = True
-        if self.carrying_weight > 0:
-            if self.char_type != 'seagull': 
-                can_jump = False
+        if self.carrying_weight > 0 and self.char_type != 'seagull': can_jump = False
 
         if can_jump and (self.on_ground or self.jump_count < 2):
-            self.velocity.y = self.base_jump_power 
+            jump_pwr = self.base_jump_power
+            
+            # Tukan Momentum Zıplaması: Hız ne kadar yüksekse o kadar güçlü zıplar
+            if self.char_type == 'tukan':
+                momentum_bonus = abs(self.velocity.x) * 0.4
+                jump_pwr -= momentum_bonus # Y yukarı doğru negatif
+            
+            self.velocity.y = jump_pwr
             self.on_ground = False
             self.jump_count += 1
-            
-            # Squash & Stretch Efekti
             self.scale_x = 0.7
             self.scale_y = 1.3
 
     def apply_gravity(self):
-        if self.velocity.y > 0:
-            self.acceleration.y = GRAVITY * self.gravity_factor
-        else:
-            self.acceleration.y = GRAVITY
+        if self.velocity.y > 0: self.acceleration.y = GRAVITY * self.gravity_factor
+        else: self.acceleration.y = GRAVITY
 
     def physics_update(self):
         self.apply_gravity()
         self.velocity += self.acceleration
         
         if self.grapple_state != 'active':
-            self.velocity.x *= FRICTION
+            # Sürtünme: Tukan için daha az sürtünme (kayma hissi)
+            fric = FRICTION
+            if self.char_type == 'tukan': fric = 0.96 
+            self.velocity.x *= fric
         else:
             self.velocity *= 0.995
 
+        # Grapple Swing Logic
         if self.grapple_state == 'active' and self.grapple_point:
             dx = self.rect.centerx - self.grapple_point[0]
             dy = self.rect.centery - self.grapple_point[1]
@@ -248,11 +242,8 @@ class Player(pygame.sprite.Sprite):
                 angle = math.atan2(dy, dx)
                 self.rect.centerx = self.grapple_point[0] + math.cos(angle) * self.rope_length
                 self.rect.centery = self.grapple_point[1] + math.sin(angle) * self.rope_length
-                
-                nx = dx / dist
-                ny = dy / dist
+                nx, ny = dx / dist, dy / dist
                 dot = self.velocity.x * nx + self.velocity.y * ny
-                
                 if dot > 0:
                     self.velocity.x -= dot * nx
                     self.velocity.y -= dot * ny
@@ -263,23 +254,20 @@ class Player(pygame.sprite.Sprite):
                 self.velocity.x -= math.cos(angle_to_center) * pull_strength
                 self.velocity.y -= math.sin(angle_to_center) * pull_strength
 
+        # Max Hız Limiti
         if self.grapple_state != 'active':
-            current_max_speed = MAX_SPEED
-            if self.char_type == 'twi':
-                current_max_speed *= 1.4
-            
-            if abs(self.velocity.x) > current_max_speed: 
-                self.velocity.x = current_max_speed * (1 if self.velocity.x > 0 else -1)
+            limit = self.base_max_speed
+            if abs(self.velocity.x) > limit: 
+                self.velocity.x = limit * (1 if self.velocity.x > 0 else -1)
         
         if abs(self.velocity.x) < 0.1: self.velocity.x = 0
         
-        # Squash & Stretch toparlanması
+        # Squash fix
         self.scale_x += (1.0 - self.scale_x) * 0.1
         self.scale_y += (1.0 - self.scale_y) * 0.1
 
     def fire_grapple(self, tiles):
         if not self.has_grapple: return False
-
         rad = math.radians(self.grapple_angle)
         start_x, start_y = self.rect.center
         
@@ -287,9 +275,7 @@ class Player(pygame.sprite.Sprite):
         for i in range(10, ROPE_LENGTH_MAX, step): 
             check_x = start_x + math.cos(rad) * i
             check_y = start_y - math.sin(rad) * i 
-            
             point_rect = pygame.Rect(check_x - 2, check_y - 2, 4, 4)
-            
             for tile in tiles:
                 if tile.rect.colliderect(point_rect):
                     self.grapple_state = 'active'
@@ -297,7 +283,6 @@ class Player(pygame.sprite.Sprite):
                     self.rope_length = i 
                     self.velocity += pygame.math.Vector2(math.cos(rad)*5, -math.sin(rad)*5)
                     return True
-        
         self.grapple_state = 'none'
         return False
 
@@ -334,7 +319,6 @@ class Player(pygame.sprite.Sprite):
                         self.scale_x = 1.4
                         self.scale_y = 0.6
                         self.land_particles_spawned = True 
-                        
                     self.rect.bottom = tile.rect.top
                     self.velocity.y = 0
                     self.on_ground = True
@@ -350,103 +334,77 @@ class Player(pygame.sprite.Sprite):
                     self.velocity.y = 0
                     self.on_ground = True
                     self.jump_count = 0
-                    
                     if self.carrier != other:
                         self.carrier = other
                         self.ride_offset_x = self.rect.centerx - other.rect.centerx
 
         for hazard in hazards:
-            if self.rect.inflate(-20, -20).colliderect(hazard.rect):
-                self.is_dead = True
+            if self.rect.inflate(-20, -20).colliderect(hazard.rect): self.is_dead = True
         
         if self.rect.y > 3000: self.is_dead = True
 
     def animate(self):
         now = pygame.time.get_ticks()
-        
-        # Animasyon durumunu belirle
-        if self.grapple_state == 'active':
-            self.status = 'jump' 
-        elif not self.on_ground:
-            self.status = 'jump'
+        if self.grapple_state == 'active': self.status = 'jump' 
+        elif not self.on_ground: self.status = 'jump'
         else:
-            if abs(self.velocity.x) > 0.5:
-                self.status = 'walk'
+            if abs(self.velocity.x) > 0.1: self.status = 'walk'
             else:
                 self.status = 'walk'
-                self.frame_index = 0 # Duruyorsa ilk karede kal
+                self.frame_index = 0 
         
-        # Kare değiştirme (Hız kontrolüyle)
-        if (self.status == 'walk' and abs(self.velocity.x) > 0.5) or self.status == 'jump':
-            if now - self.last_update > ANIMATION_SPEED:
+        if (self.status == 'walk' and abs(self.velocity.x) > 0.1) or self.status == 'jump':
+            # Tukan hızlıysa animasyon da hızlansın
+            anim_speed = ANIMATION_SPEED
+            if self.char_type == 'tukan' and abs(self.velocity.x) > 8:
+                anim_speed = 50
+            
+            if now - self.last_update > anim_speed:
                 self.last_update = now
                 self.frame_index = (self.frame_index + 1) % len(self.animations[self.status])
 
-        if self.frame_index >= len(self.animations[self.status]): 
-            self.frame_index = 0
-            
+        if self.frame_index >= len(self.animations[self.status]): self.frame_index = 0
         self.image = self.animations[self.status][self.frame_index]
 
     def update(self, tiles, hazards, game_state, party, particle_group, is_active_player):
-        # 1. Taşıyıcı Kontrolü
         if self.carrier:
             if self.carrier in party and not self.carrier.is_dead:
                 self.rect.bottom = self.carrier.rect.top
                 self.rect.centerx = self.carrier.rect.centerx + self.ride_offset_x
                 self.velocity = pygame.math.Vector2(0, 0)
                 self.on_ground = True
-            else:
-                self.carrier = None
+            else: self.carrier = None
 
-        # 2. Input Alma (Hibrit Mantık Burada Çalışır)
-        if game_state == 'playing':
-            self.get_input(party, is_active_player)
-        else:
+        if game_state == 'playing': self.get_input(party, is_active_player)
+        else: 
             self.acceleration.x = 0 
             self.carrying_weight = self.calculate_weight_above(party)
 
-        # 3. Fizik ve Çarpışmalar
         self.physics_update()
         self.check_collisions(tiles, hazards, party)
         self.animate()
         
-        # 4. Efektler (Toz ve Patlama)
         if self.on_ground and abs(self.velocity.x) > 1:
             if random.random() < 0.2: 
                 offset_x = 10 if self.velocity.x > 0 else -10
-                particle_group.add(Particle(
-                    self.rect.centerx - offset_x, self.rect.bottom,
-                    velocity=[random.uniform(-0.5, 0.5), random.uniform(-1, -0.5)],
-                    radius=random.randint(2, 4),
-                    color=(220, 220, 220), 
-                    life=20
-                ))
+                particle_group.add(Particle(self.rect.centerx - offset_x, self.rect.bottom, [random.uniform(-0.5, 0.5), random.uniform(-1, -0.5)], random.randint(2, 4), (220, 220, 220), 20))
 
         if self.land_particles_spawned:
             self.land_particles_spawned = False
             for _ in range(5):
-                particle_group.add(Particle(
-                    self.rect.centerx, self.rect.bottom,
-                    velocity=[random.uniform(-3, 3), random.uniform(-1, -0.1)],
-                    radius=random.randint(3, 6),
-                    color=(255, 255, 255),
-                    life=30
-                ))
+                particle_group.add(Particle(self.rect.centerx, self.rect.bottom, [random.uniform(-3, 3), random.uniform(-1, -0.1)], random.randint(3, 6), (255, 255, 255), 30))
 
     def draw(self, screen, scroll_x):
         center_x = self.rect.centerx - scroll_x
         center_y = self.rect.centery
 
-        # Nişan Oku
         if self.grapple_state == 'aiming':
             rad = math.radians(self.grapple_angle)
-            arrow_len = ARROW_LENGTH
-            end_x = center_x + math.cos(rad) * arrow_len
-            end_y = center_y - math.sin(rad) * arrow_len
+            end_x = center_x + math.cos(rad) * ARROW_LENGTH
+            end_y = center_y - math.sin(rad) * ARROW_LENGTH
             pygame.draw.line(screen, (255, 255, 255), (center_x, center_y), (end_x, end_y), 2)
             pygame.draw.circle(screen, ARROW_COLOR, (end_x, end_y), 5)
 
-        # İp Çizimi
         if self.grapple_state == 'active' and self.grapple_point:
             grapple_screen_x = self.grapple_point[0] - scroll_x
             grapple_screen_y = self.grapple_point[1]
@@ -454,10 +412,8 @@ class Player(pygame.sprite.Sprite):
             pygame.draw.line(screen, color, (center_x, center_y), (grapple_screen_x, grapple_screen_y), 3)
             pygame.draw.circle(screen, color, (grapple_screen_x, grapple_screen_y), 5)
 
-        # Karakter Çizimi (Squash & Stretch Dahil)
         img_to_draw = self.image
-        if not self.facing_right:
-            img_to_draw = pygame.transform.flip(img_to_draw, True, False)
+        if not self.facing_right: img_to_draw = pygame.transform.flip(img_to_draw, True, False)
             
         new_w = int(img_to_draw.get_width() * self.scale_x)
         new_h = int(img_to_draw.get_height() * self.scale_y)
@@ -470,7 +426,6 @@ class Player(pygame.sprite.Sprite):
         
         screen.blit(scaled_img, draw_rect)
         
-        # Oyuncu Etiketi (P1, P2)
         label_x = self.rect.centerx - scroll_x - (self.label_bg.get_width() // 2)
         label_y = draw_rect.top - 25
         screen.blit(self.label_bg, (label_x, label_y))

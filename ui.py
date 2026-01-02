@@ -14,7 +14,6 @@ def draw_prompt(screen, x, y):
     screen.blit(text_surf, text_rect)
 
 def draw_dialogue_box(screen, selected_option, title_text, desc_text, opt1_text, opt2_text):
-    # Dinamik Diyalog Kutusu
     box_rect = pygame.Rect(50, SCREEN_HEIGHT - 150, SCREEN_WIDTH - 100, 130)
     pygame.draw.rect(screen, UI_BG_COLOR, box_rect, border_radius=10)
     pygame.draw.rect(screen, (255, 255, 255), box_rect, 2, border_radius=10)
@@ -22,15 +21,12 @@ def draw_dialogue_box(screen, selected_option, title_text, desc_text, opt1_text,
     font_title = pygame.font.SysFont("Arial", 22, bold=True)
     font_desc = pygame.font.SysFont("Arial", 20)
     
-    # Başlık
     title = font_title.render(title_text, True, SELECTION_COLOR)
     screen.blit(title, (box_rect.x + 20, box_rect.y + 15))
     
-    # Açıklama
     desc = font_desc.render(desc_text, True, TEXT_COLOR)
     screen.blit(desc, (box_rect.x + 20, box_rect.y + 45))
     
-    # Seçenekler
     opt1_color = SELECTION_COLOR if selected_option == 0 else TEXT_COLOR
     opt2_color = SELECTION_COLOR if selected_option == 1 else TEXT_COLOR
     
@@ -40,7 +36,106 @@ def draw_dialogue_box(screen, selected_option, title_text, desc_text, opt1_text,
     screen.blit(txt1, (box_rect.x + 50, box_rect.y + 90))
     screen.blit(txt2, (box_rect.x + 400, box_rect.y + 90))
 
-# --- AYARLAR MENÜSÜ (YENİ) ---
+# --- ENVANTER (TAB) SİSTEMİ ---
+class InventoryOverlay:
+    def __init__(self):
+        self.font = pygame.font.SysFont("Arial", 16, bold=True)
+        self.dragging_item = None # 'grapple'
+        self.drag_source_index = -1
+        try:
+            raw_icon = pygame.image.load('assets/web.png').convert_alpha()
+            self.icon_surf = pygame.transform.scale(raw_icon, (40, 40))
+        except:
+            self.icon_surf = pygame.Surface((40,40))
+            self.icon_surf.fill((100,200,255))
+            
+    def draw(self, screen, party):
+        # Arka plan karartma
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.fill((0, 0, 0))
+        overlay.set_alpha(150)
+        screen.blit(overlay, (0,0))
+        
+        slot_w, slot_h = 80, 80
+        start_x = (SCREEN_WIDTH - (len(party) * (slot_w + 20))) // 2
+        y_pos = SCREEN_HEIGHT // 2
+        
+        self.slots = [] # Çarpışma kontrolü için rect'leri sakla
+        
+        mouse_pos = pygame.mouse.get_pos()
+        
+        title = self.font.render("YETENEK DAGITIMI (SURUKLE VE BIRAK)", True, (255,255,255))
+        screen.blit(title, (SCREEN_WIDTH//2 - title.get_width()//2, y_pos - 150))
+        
+        for i, player in enumerate(party):
+            x = start_x + i * (slot_w + 20)
+            
+            # Karakter Resmi
+            try:
+                char_img = player.animations['walk'][0]
+                char_ratio = char_img.get_width() / char_img.get_height()
+                display_h = 100
+                display_w = int(display_h * char_ratio)
+                scaled_char = pygame.transform.scale(char_img, (display_w, display_h))
+                
+                # Ortala
+                char_rect = scaled_char.get_rect(center=(x + slot_w//2, y_pos - 60))
+                screen.blit(scaled_char, char_rect)
+            except: pass
+            
+            # Slot Kutusu
+            slot_rect = pygame.Rect(x, y_pos, slot_w, slot_h)
+            self.slots.append({'rect': slot_rect, 'player': player, 'index': i})
+            
+            pygame.draw.rect(screen, SLOT_BG_COLOR, slot_rect, border_radius=5)
+            pygame.draw.rect(screen, SLOT_BORDER_COLOR, slot_rect, 2, border_radius=5)
+            
+            # Eğer item varsa ve bu slot drag kaynağı değilse çiz
+            if player.has_grapple:
+                if not (self.dragging_item and self.drag_source_index == i):
+                    icon_rect = self.icon_surf.get_rect(center=slot_rect.center)
+                    screen.blit(self.icon_surf, icon_rect)
+                    
+        # Sürüklenen İtem
+        if self.dragging_item:
+            screen.blit(self.icon_surf, (mouse_pos[0] - 20, mouse_pos[1] - 20))
+            
+    def handle_input(self, event, party):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            mouse_pos = pygame.mouse.get_pos()
+            for slot in self.slots:
+                if slot['rect'].collidepoint(mouse_pos):
+                    if slot['player'].has_grapple:
+                        self.dragging_item = 'grapple'
+                        self.drag_source_index = slot['index']
+                        
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            if self.dragging_item:
+                mouse_pos = pygame.mouse.get_pos()
+                target_found = False
+                for slot in self.slots:
+                    if slot['rect'].collidepoint(mouse_pos):
+                        # Aynı yere bırakmadıysa
+                        if slot['index'] != self.drag_source_index:
+                            # Transfer
+                            party[self.drag_source_index].has_grapple = False
+                            # Eski grapple state'i temizle
+                            party[self.drag_source_index].grapple_state = 'none' 
+                            
+                            # Varsa hedefteki item'ı değiş tokuş yap (Şimdilik sadece 1 item var, o yüzden direkt ver)
+                            # Eğer hedefte zaten varsa? Oyun kuralı: 1 item tek kişide.
+                            # Ama kod mantığı gereği, tek item varsa sadece transfer olur.
+                            slot['player'].has_grapple = True
+                            target_found = True
+                        else:
+                            # Kendi yerine bıraktı, iptal
+                            target_found = True # İptal sayılır
+                        break
+                
+                self.dragging_item = None
+                self.drag_source_index = -1
+
+# --- AYARLAR MENÜSÜ ---
 class SettingsMenu:
     def __init__(self):
         self.options = [
@@ -60,18 +155,14 @@ class SettingsMenu:
             elif event.key == pygame.K_DOWN:
                 self.selected_index = (self.selected_index + 1) % len(self.options)
             
-            # Değer Değiştirme
             elif event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
                 key = self.options[self.selected_index]['key']
                 direction = 1 if event.key == pygame.K_RIGHT else -1
                 
                 if key == 'fullscreen':
                     GAME_SETTINGS['fullscreen'] = not GAME_SETTINGS['fullscreen']
-                    # Ekran modunu anında uygula
-                    if GAME_SETTINGS['fullscreen']:
-                        pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-                    else:
-                        pygame.display.set_mode((1280, 720))
+                    if GAME_SETTINGS['fullscreen']: pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+                    else: pygame.display.set_mode((1280, 720))
                         
                 elif key == 'volume':
                     GAME_SETTINGS['volume'] += direction
@@ -81,13 +172,11 @@ class SettingsMenu:
                 elif key == 'language':
                     GAME_SETTINGS['language'] = 'ENG' if GAME_SETTINGS['language'] == 'TR' else 'TR'
                 
-            elif event.key == pygame.K_ESCAPE:
-                return "BACK"
+            elif event.key == pygame.K_ESCAPE: return "BACK"
         return None
 
     def draw(self, screen):
-        screen.fill((10, 10, 20)) # Çok koyu arka plan
-        
+        screen.fill((10, 10, 20)) 
         title_surf = self.title_font.render("AYARLAR", True, (255, 255, 255))
         title_rect = title_surf.get_rect(center=(SCREEN_WIDTH//2, 100))
         screen.blit(title_surf, title_rect)
@@ -96,7 +185,6 @@ class SettingsMenu:
             color = (255, 255, 255)
             if i == self.selected_index: color = SELECTION_COLOR
             
-            # Değer Metni Hazırla
             val_text = ""
             key = opt['key']
             if key == 'fullscreen': val_text = "TAM EKRAN" if GAME_SETTINGS['fullscreen'] else "PENCERE"
@@ -149,9 +237,8 @@ class MainMenu:
 # --- DÜNYA HARİTASI ---
 class WorldMap:
     def __init__(self):
-        possible_files = ['assets/map.jpg', 'assets/map.png', 'assets/map.jpeg', 'map.jpg', 'map.png']
+        possible_files = ['assets/map.jpg', 'assets/map.png']
         original_img = None
-        
         for f in possible_files:
             if os.path.exists(f):
                 try:
@@ -180,12 +267,13 @@ class WorldMap:
         self.last_mouse_x = 0
         
         self.node_positions_pct = [
-            {'id': 1, 'pct': (0.08, 0.75), 'info': 'Wasteland', 'reward': ''},
-            {'id': 2, 'pct': (0.28, 0.55), 'info': 'Kemik Vadisi', 'reward': '+1 Duck'},
-            {'id': 3, 'pct': (0.48, 0.45), 'info': 'Sinir Kapisi', 'reward': ''},
-            {'id': 4, 'pct': (0.68, 0.65), 'info': 'Marti Koprusu', 'reward': '+1 Seagull'},
-            {'id': 5, 'pct': (0.82, 0.50), 'info': 'Tavuk Koyu', 'reward': ''},
-            {'id': 6, 'pct': (0.95, 0.35), 'info': 'Kraliyet Kalesi', 'reward': '+1 Twi'},
+            {'id': 1, 'pct': (0.05, 0.75), 'info': 'Wasteland', 'reward': ''},
+            {'id': 2, 'pct': (0.15, 0.55), 'info': 'Kemik Vadisi', 'reward': '+1 Duck'},
+            {'id': 3, 'pct': (0.30, 0.45), 'info': 'Sinir Kapisi', 'reward': ''},
+            {'id': 4, 'pct': (0.45, 0.65), 'info': 'Marti Koprusu', 'reward': '+1 Seagull'},
+            {'id': 5, 'pct': (0.60, 0.50), 'info': 'Tavuk Koyu', 'reward': ''},
+            {'id': 6, 'pct': (0.75, 0.35), 'info': 'Kraliyet Kalesi', 'reward': '+1 Twi'},
+            {'id': 7, 'pct': (0.90, 0.30), 'info': 'Hiz Pisti', 'reward': '+1 Tukan'},
         ]
         
         self.nodes = []

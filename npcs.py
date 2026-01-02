@@ -1,4 +1,5 @@
 import pygame
+import math
 from settings import *
 
 class NPC(pygame.sprite.Sprite):
@@ -18,9 +19,13 @@ class NPC(pygame.sprite.Sprite):
                 scale = 2.5
             elif variant == 'twi':
                 sheet = pygame.image.load('assets/twi_wolk.png').convert_alpha()
-                # Twi'nin 3 kare yürüme animasyonu olduğunu varsayıyoruz (twi_wolk.png)
-                frame_count = 3 
+                # DÜZELTME: Twi'nin 5 karesi var
+                frame_count = 5 
                 scale = 0.9
+            elif variant == 'tukan':
+                sheet = pygame.image.load('assets/tukan_wolk.png').convert_alpha()
+                frame_count = 4
+                scale = 1.2
             else:
                 sheet = pygame.image.load('assets/duck_wolk.png').convert_alpha()
                 frame_count = 2
@@ -36,8 +41,13 @@ class NPC(pygame.sprite.Sprite):
                 surface = pygame.Surface((frame_width, sheet_height), pygame.SRCALPHA)
                 surface.blit(sheet, (0, 0), (i * frame_width, 0, frame_width, sheet_height))
                 scaled = pygame.transform.scale(surface, (target_size, target_size))
-                flipped = pygame.transform.flip(scaled, True, False)
-                self.frames.append(flipped)
+                
+                # Twi ve Tukan için sheet'i kontrol etmek gerekebilir, 
+                # eğer düzgün görünmüyorsa flip gerekebilir
+                if variant not in ['tukan']: 
+                    scaled = pygame.transform.flip(scaled, True, False)
+                
+                self.frames.append(scaled)
             
         except FileNotFoundError:
             s = pygame.Surface((TILE_SIZE, TILE_SIZE))
@@ -48,6 +58,9 @@ class NPC(pygame.sprite.Sprite):
         self.image = self.frames[0]
         self.rect = self.image.get_rect(midbottom=(x + TILE_SIZE//2, y + TILE_SIZE))
         self.last_update = pygame.time.get_ticks()
+        
+        # Twi DÜZELTME: 0. indexteki frame'i kaydet (hayalet sorunu için)
+        self.idle_image = self.frames[0]
 
     def animate(self):
         now = pygame.time.get_ticks()
@@ -57,6 +70,10 @@ class NPC(pygame.sprite.Sprite):
             self.image = self.frames[self.frame_index]
 
     def draw_scrolled(self, screen, scroll_x):
+        # NPC iken sadece duruyor görünsün istiyorsan burayı kapatabilirsin,
+        # ama canlılık için animate kalabilir.
+        # "Twi henüz alınmamışken 3 tane görünüyor" sorunu genellikle 
+        # yanlış frame_count ile bölünmesinden kaynaklanır.
         self.animate()
         if -TILE_SIZE < self.rect.x - scroll_x < SCREEN_WIDTH:
             screen.blit(self.image, (self.rect.x - scroll_x, self.rect.y))
@@ -67,7 +84,7 @@ class NPC(pygame.sprite.Sprite):
             return True
         return False
 
-# Düşman (Köpek) - Değişiklik Yok
+# Düşman (Köpek)
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
@@ -79,6 +96,7 @@ class Enemy(pygame.sprite.Sprite):
         self.speed = 3
         self.last_update = pygame.time.get_ticks()
         self.facing_left = True 
+        self.target_player = None
 
     def import_assets(self):
         try:
@@ -96,23 +114,40 @@ class Enemy(pygame.sprite.Sprite):
         except FileNotFoundError:
             return [pygame.Surface((64,64)) for _ in range(3)]
 
-    def ai_behavior(self, player):
-        if abs(self.rect.y - player.rect.y) < 100:
-            distance = player.rect.x - self.rect.x
-            if abs(distance) < 800:
-                if distance > 0:
-                    self.velocity.x = self.speed
-                    self.facing_left = False
+    def find_closest_player(self, party):
+        closest = None
+        min_dist = 9999
+        for p in party:
+            if not p.is_dead:
+                dist = abs(self.rect.x - p.rect.x)
+                if dist < min_dist:
+                    min_dist = dist
+                    closest = p
+        return closest
+
+    def ai_behavior(self, party):
+        # En yakın oyuncuyu bul
+        self.target_player = self.find_closest_player(party)
+        
+        if self.target_player:
+            if abs(self.rect.y - self.target_player.rect.y) < 150: # Y ekseni toleransı
+                distance = self.target_player.rect.x - self.rect.x
+                if abs(distance) < 800:
+                    if distance > 0:
+                        self.velocity.x = self.speed
+                        self.facing_left = False
+                    else:
+                        self.velocity.x = -self.speed
+                        self.facing_left = True 
                 else:
-                    self.velocity.x = -self.speed
-                    self.facing_left = True 
+                    self.velocity.x = 0
             else:
                 self.velocity.x = 0
         else:
             self.velocity.x = 0
 
-    def update(self, tiles, player):
-        self.ai_behavior(player)
+    def update(self, tiles, party):
+        self.ai_behavior(party)
         self.velocity.y += GRAVITY
         self.rect.x += self.velocity.x
         for tile in tiles:

@@ -14,14 +14,12 @@ LEVEL_1_MAP = [
     " XXXXX  K  KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK  K  XX  K K  K  K   K XX  K K  K  K KKKKKKKKKKKKK   KK  K    K   K   K   K   K  K  K  K   K  K   K  XXX  K   XXX  KK   K   K  KXXXK   K  K  K  K  KKKKKKKKKKKKKKKKKK                    ",
     " XXXXXWWKWWKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKWWWWWWXXWWWWWWWWWWWWWWWWXXWWWWWTWWWWWWKKKKKKKKKKKK  T W   WT TW    WTTWWWW WTTWWWW TWWWW TTWWWW TWWW TXXXX  T   XX  WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  KKKKKKKKKKKKKKKKKKK F                  ",
     " XXXXXWWWWWKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKWWWWWWXXXWWWWWWWWWWWWWWWXXXWWWWWWWWWWWKKKKKKKKKKKK                  XX                       XXXXX      XXX         D                           KKKKKKKKKKKKKKKKKKKKK   FFF                  ",
-    " XXXXXWWWWWKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKWWWWWWXXXWWWWWWWWWWWWWWWXXXWWWWWWWWWWWKKKKKKKKKKKK        "
-    "          XX                      XXXXXX      XXX                                    KKKKKKKKKKKKKKKKKKKKKKK  FFFFF                  ",
+    " XXXXXWWWWWKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKWWWWWWXXXWWWWWWWWWWWWWWWXXXWWWWWWWWWWWKKKKKKKKKKKK                  XX                      XXXXXX      XXX                                    KKKKKKKKKKKKKKKKKKKKKKK  FFFFF                  ",
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  WW WW  XXXXXXXXXXXXXXX  WW WW  XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  WW WW  XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXTTTTTTTXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
     "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  WW WW  TTTTTTTTTTTTTTT  WW WW  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT  WW WW  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
 ]
 
 # --- BÖLÜM 2: DÜZLÜK VE ÖRDEK (NPC) ---
-# 'N' harfi Duck NPC'sini temsil eder
 LEVEL_2_MAP = [
     "                                                                                                                                                                                                ",
     "                                                                                                                                                                                                ",
@@ -66,29 +64,6 @@ LEVEL_3_MAP = [
     "TTTT  TTTT  TTTTTTTTTTTTT  TTTT  WWWWWWWWW  TTTTTTTTT  WWWWWWWW  TTTTTTTTTTTTTTTTT  WWWWWWWW TTTT  WWWW  TTTTTTWWWW  WWTTTTTT  TTTTTTTTTTT                                                      ",
 ]
 # --- BÖLÜM 4: MARTI KURTARMA (DİKEY) ---
-# N: Martı NPC (Tepede kafeste gibi)
-LEVEL_4_MAP = [
-    "                                                                                                                      ",
-    "                                                    N                                                                 ",
-    "                                                  KKKKK                                                               ",
-    "                                                  K   K                                                               ",
-    "                                       K          K   K        K                                                      ",
-    "                                      KKK         KKKKK       KKK                                            F        ",
-    "                                     KKKKK                   KKKKK                                          FFF       ",
-    "                   K                KKKKKKK                 KKKKKKK                                        FFFFF      ",
-    "                  KKK              KKKKKKKKK               KKKKKKKKK                                      FFFFFFF     ",
-    "                 KKKKK            KKKKKKKKKKK             KKKKKKKKKKK                                    FFFFFFFFF    ",
-    "                KKKKKKK          KKKKKKKKKKKKK           KKKKKKKKKKKKK                                  FFFFFFFFFFF   ",
-    "               KKKKKKKKK        KKKKKKKKKKKKKKK         KKKKKKKKKKKKKKK                                TTTTTTTTTTT    ",
-    "              KKKKKKKKKKK      KKKKKKKKKKKKKKKKK       KKKKKKKKKKKKKKKKK                               TTTTTTTTTTT    ",
-    "             KKKKKKKKKKKKK    KKKKKKKKKKKKKKKKKKK     KKKKKKKKKKKKKKKKKKK                              TTTTTTTTTTT    ",
-    "            KKKKKKKKKKKKKKK  KKKKKKKKKKKKKKKKKKKKK   KKKKKKKKKKKKKKKKKKKKK                             TTTTTTTTTTT    ",
-    "    K      KKKKKKKKKKKKKKKKK KKKKKKKKKKKKKKKKKKKKK   KKKKKKKKKKKKKKKKKKKKK                             TTTTTTTTTTT    ",
-    "   KKK    KKKKKKKKKKKKKKKKKK KKKKKKKKKKKKKKKKKKKKK   KKKKKKKKKKKKKKKKKKKKK   WWWWWWWW                  TTTTTTTTTTT    ",
-    "  KKKKK   TTTTTTTTTTTTTTTTTT TTTTTTTTTTTTTTTTTTTTT   TTTTTTTTTTTTTTTTTTTTT   WWWWWWWW                  TTTTTTTTTTT    ",
-    " XXXXXXX  TTTTTTTTTTTTTTTTTT TTTTTTTTTTTTTTTTTTTTT   TTTTTTTTTTTTTTTTTTTTT   WWWWWWWW                  TTTTTTTTTTT    ",
-    " TTTTTTT  TTTTTTTTTTTTTTTTTT TTTTTTTTTTTTTTTTTTTTT   TTTTTTTTTTTTTTTTTTTTT   WWWWWWWW                  TTTTTTTTTTT    ",
-]
 LEVEL_4_MAP = [
     "                                                                                                                      ",
     "                                                    N                                                                 ",
@@ -111,7 +86,7 @@ LEVEL_4_MAP = [
     " XXXXXXX  TTTTTTTTTTTTTTTTTT TTTTTTTTTTTTTTTTTTTTT   TTTTTTTTTTTTTTTTTTTTT   WWWWWWWW        W         TTTTTTTTTTT    ",
     " TTTTTTT  TTTTTTTTTTTTTTTTTT TTTTTTTTTTTTTTTTTTTTT   TTTTTTTTTTTTTTTTTTTTT   WWWWWWWW        W         TTTTTTTTTTT    ",
 ]
-# Yüksek platformlar ve düşmanlar. Martı'nın taşıma kapasitesini test eder.
+# LEVEL 5
 LEVEL_5_MAP = [
     "                                                                                                                                                                                                ",
     "                                                                                                                                                                                                ",
@@ -135,7 +110,7 @@ LEVEL_5_MAP = [
     "    KKKKKKKKKKKKKKKKKKKKKKKKKKK      TTTTTTTTTTT     XXXXXXXXX  XXXXXXXXX  XXXXXXXXX                                                                                                        ",
 ]
 # --- BÖLÜM 6: HIZ PARKURU (TWI SHOWCASE) ---
-# Twi'nin hızını kullanabileceği düz alanlar ve atlama rampaları
+# Twi: 8 Kare Yatay - Uzun boşluklar (7-8 kare)
 LEVEL_6_MAP = [
     "                                                                                                                                                                                                                                                ",
     "                                                                                                                                                                                                                                                ",
@@ -148,13 +123,39 @@ LEVEL_6_MAP = [
     "                 N                                                                                                                                                                                                                              ",
     "               KKKKK                                                                                                                                                                                                                            ",
     "               K   K                                                                                                                                                                                                                            ",
-    "               K   K                K                                                                                                                                                                                                           ",
-    "              KKKKKKK              KKK                                                                                                                                                                                                          ",
-    "             KKKKKKKKK            KKKKK                                    K  K  K                                      K                                                                                                                       ",
-    "            KKKKKKKKKKK          KKKKKKK            D                     KKKKKKKKK                                    KKK                                                                                                                      ",
-    "           KKKKKKKKKKKKK        KKKKKKKKK          XXX                   KKKKKKKKKKK                                  KKKKK                                                F                                                                    ",
-    "          KKKKKKKKKKKKKKK      KKKKKKKKKKK        XXXXX                 KKKKKKKKKKKKK                                KKKKKKK                                              FFF                                                                   ",
-    "         KKKKKKKKKKKKKKKKK    KKKKKKKKKKKKK      XXXXXXX               KKKKKKKKKKKKKKK                              KKKKKKKKK            D             D                 FFFFF                                                                  ",
-    " XXXXX  KKKKKKKKKKKKKKKKKKK  KKKKKKKKKKKKKKK    XXXXXXXXX    K  K  K  KKKKKKKKKKKKKKKKK   WWWWWWWWWWWWWW   K  K  K KKKKKKKKKKK        XXX           XXX               FFFFFFF                                                                 ",
-    " TTTTT  TTTTTTTTTTTTTTTTTTT  TTTTTTTTTTTTTTT    XXXXXXXXX    TTTTTTT  TTTTTTTTTTTTTTTTT   WWWWWWWWWWWWWW   TTTTTTT TTTTTTTTTTT       XXXXX         XXXXX             FFFFFFFFF                                                                ",
+    "               K   K                                                                                                                                                                                                                            ",
+    "              KKKKKKK                 K      K                  K                                                                                                                                                                           ",
+    "             KKKKKKKKK            D  KKK    KKK  D             KKK                         K  K  K                                      K                                                                                                                       ",
+    "            KKKKKKKKKKK          XXXKKKKK  KKKKKXXX           KKKKK            D                     KKKKKKKKK                                    KKK                                                                                                                      ",
+    "           KKKKKKKKKKKKK        XXXXKKKKK  KKKKKXXXX         KKKKKKK          XXX                   KKKKKKKKKKK                                  KKKKK                                                F                                                                    ",
+    "          KKKKKKKKKKKKKKK      XXXXXKKKKK  KKKKKXXXXX       KKKKKKKKK        XXXXX                 KKKKKKKKKKKKK                                KKKKKKK                                              FFF                                                                   ",
+    "         KKKKKKKKKKKKKKKKK    XXXXXXKKKKK  KKKKKXXXXXX     KKKKKKKKKKK      XXXXXXX               KKKKKKKKKKKKKKK                              KKKKKKKKK            D             D                 FFFFF                                                                  ",
+    " XXXXX  KKKKKKKKKKKKKKKKKKK  XXXXXXX            XXXXXXX   KKKKKKKKKKKKK    XXXXXXXXX    K  K  K  KKKKKKKKKKKKKKKKK   WWWWWWWWWWWWWW   K  K  K KKKKKKKKKKK        XXX           XXX               FFFFFFF                                                                 ",
+    " TTTTT  TTTTTTTTTTTTTTTTTTT  XXXXXXX            XXXXXXX   TTTTTTTTTTTTT    XXXXXXXXX    TTTTTTT  TTTTTTTTTTTTTTTTT   WWWWWWWWWWWWWW   TTTTTTT TTTTTTTTTTT       XXXXX         XXXXX             FFFFFFFFF                                                                ",
 ]
+
+# --- BÖLÜM 7: TUKAN (HIZ VE MOMENTUM) ---
+# N: Tukan
+# Çok uzun düzlükler, imkansız gibi görünen geniş boşluklar
+LEVEL_7_MAP = [
+    "                                                                                                                                                                                                                                                                                        ",
+    "                                                                                                                                                                                                                                                                                        ",
+    "                                                                                                                                                                                                                                                                                        ",
+    "          N                                                                                                                                                                                                                                                                              ",
+    "        KKKKK                                                                                                                                                                                                                                                                           ",
+    "        K   K                                                                                                                                                                                                                                                                           ",
+    "        K   K                                                                                                                                                                                                                                                                           ",
+    "       KKKKKKK                                                                                                                                                                                                                                                                          ",
+    "      KKKKKKKKK                                                                                                                                                                                                                                                                         ",
+    "     KKKKKKKKKKK                                                                                                                                                                                                                                                                        ",
+    "    KKKKKKKKKKKKK                                                                                                                                                                                                                                                                       ",
+    "    KKKKKKKKKKKKK                                                                                                                                                                                                                                                                       ",
+    "    KKKKKKKKKKKKK                                                                                                                                                                                                                                                                       ",
+    "    KKKKKKKKKKKKK                                                                                                                                                                                                                                                                       ",
+    "    KKKKKKKKKKKKK                                                                                                                                                                                                                                                                       ",
+    "    KKKKKKKKKKKKK                                                                                                                                                                                                                                                                       ",
+    "    KKKKKKKKKKKKK                                                                                                                                                                                                                                            F                          ",
+    "    KKKKKKKKKKKKK                                                                                                                                                                                                                                           FFF                         ",
+    "    TTTTTTTTTTTTT                                                  K                                                          K                                                            K                                                               FFFFF                        ",
+        "    TTTTTTTTTTTTTXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXK   WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWK   WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWK   WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWFFFFFFF                        ",
+    ]

@@ -3,15 +3,15 @@ import pygame
 # Ekran Ayarları
 pygame.init()
 INFO = pygame.display.Info()
-# Varsayılan olarak Fullscreen başlasın ama değiştirilebilir olsun
+
+# DÜZELTME: Sabit 1280 yerine monitörün gerçek çözünürlüğünü alıyoruz
 SCREEN_WIDTH = INFO.current_w
 SCREEN_HEIGHT = INFO.current_h
 FPS = 60
 
 # Fizik Ayarları
 GRAVITY = 0.8
-JUMP_STRENGTH = -16
-MAX_SPEED = 8      # Hız biraz düşürüldü, daha kontrollü olsun
+MAX_SPEED = 8      
 ACCELERATION = 0.6
 FRICTION = 0.88
 ANIMATION_SPEED = 100
@@ -30,7 +30,10 @@ VISUAL_Y_OFFSET = 55
 
 # Renkler
 SKY_BLUE = (135, 206, 250)
-UI_BG_COLOR = (0, 0, 0, 200) # Biraz daha koyu
+UI_BG_COLOR = (0, 0, 0, 200) 
+INVENTORY_BG_COLOR = (0, 0, 0, 150)
+SLOT_BG_COLOR = (50, 50, 50)
+SLOT_BORDER_COLOR = (200, 200, 200)
 TEXT_COLOR = (255, 255, 255)
 SELECTION_COLOR = (255, 215, 0)
 TRANSITION_COLOR = (0, 0, 0)
@@ -46,12 +49,12 @@ STATE_SETTINGS = 'settings'
 # GLOBAL AYARLAR DEPOSU
 GAME_SETTINGS = {
     'fullscreen': True,
-    'volume': 10, # 0-10 arası
+    'volume': 10, 
     'language': 'TR',
     'controls': 'Standard'
 }
 
-# KONTROL ŞEMALARI (Local Co-op için)
+# KONTROL ŞEMALARI
 CONTROLS = {
     'ARROWS': {
         'left': pygame.K_LEFT,
@@ -60,7 +63,7 @@ CONTROLS = {
         'down': pygame.K_DOWN,
         'jump': pygame.K_UP,
         'grapple': pygame.K_SPACE,
-        'interact': pygame.K_p # P1 Etkileşim
+        'interact': pygame.K_p 
     },
     'WASD': {
         'left': pygame.K_a,
@@ -68,8 +71,8 @@ CONTROLS = {
         'up': pygame.K_w,
         'down': pygame.K_s,
         'jump': pygame.K_w,
-        'grapple': pygame.K_f, # P2 Ağ atma
-        'interact': pygame.K_e # P2 Etkileşim
+        'grapple': pygame.K_f, 
+        'interact': pygame.K_e 
     }
 }
 

@@ -2,7 +2,7 @@
 LEVEL_1_MAP = [
     "                                                                                                                                                                                                                                                                                                                                ",
     "                                                                                                                                                                                                                                                                                                                                ",
-    "                                                                                                                                                                                                                                                                                                                                ",
+    "                                                                                                                                                                                                                                                                                                                                 ",
     "                              K K K                                                                                       KKK                                                                                                       ",
     "                              K K K                                                                                       KFK                                                                                                       ",
     "                          KKKKKKKKKKKKK                                                                                  KKKKK                                                                                                      ",
@@ -10,7 +10,7 @@ LEVEL_1_MAP = [
     "               K            K        K                                                                                 KKKKKKKKK                                                                                                    ",
     "              KKK          KKK       K  D                           K  K  K                                            KKKKKKKKKKK                                                                                                   ",
     "             KKKKK  K  K  K   K  K   KKKKK      K                    K  K  K                            XXXX          KKKKKKKKKKKKK                                                                                                  ",
-    "            KKKKKKK K D K  K   K  K  KKKKKKK                          KKKKKKKKKKKK      D                 XX         KKKKKKKKKKKKKKK                                                                                                 ",
+    "            KKKKKKK K D K  K   K  K  KKKKKKK                          KKKKKKKKKKKK      S                 XX         KKKKKKKKKKKKKKK                                                                                                 ",
     " XXXXX  K  KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK  K  XX  K K  K  K   K XX  K K  K  K KKKKKKKKKKKKK   KK  K    K   K   K   K   K  K  K  K   K  K   K  XXX  K   XXX  KK   K   K  KXXXK   K  K  K  K  KKKKKKKKKKKKKKKKKK                    ",
     " XXXXXWWKWWKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKWWWWWWXXWWWWWWWWWWWWWWWWXXWWWWWTWWWWWWKKKKKKKKKKKK  T W   WT TW    WTTWWWW WTTWWWW TWWWW TTWWWW TWWW TXXXX  T   XX  WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  KKKKKKKKKKKKKKKKKKK F                  ",
     " XXXXXWWWWWKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKWWWWWWXXXWWWWWWWWWWWWWWWXXXWWWWWWWWWWWKKKKKKKKKKKK                  XX                       XXXXX      XXX         D                           KKKKKKKKKKKKKKKKKKKKK   FFF                  ",
@@ -80,7 +80,7 @@ LEVEL_4_MAP = [
     "              KKKKKKKKKKK      KKKKKKKKKKKKKKKKK       KKKKKKKKKKKKKKKKK                               TTTTTTTTTTT    ",
     "             KKKKKKKKKKKKK    KKKKKKKKKKKKKKKKKKK     KKKKKKKKKKKKKKKKKKK                           K  TTTTTTTTTTT    ",
     "            KKKKKKKKKKKKKKK  KKKKKKKKKKKKKKKKKKKKK   KKKKKKKKKKKKKKKKKKKKK                             TTTTTTTTTTT    ",
-    "    K      KKKKKKKKKKKKKKKKK KKKKKKKKKKKKKKKKKKKKK   KKKKKKKKKKKKKKKKKKKKK      S                 K    TTTTTTTTTTT    ",
+    "    K      KKKKKKKKKKKKKKKKK KKKKKKKKKKKKKKKKKKKKK   KKKKKKKKKKKKKKKKKKKKK      G                 K    TTTTTTTTTTT    ",
     "   KKK    KKKKKKKKKKKKKKKKKK KKKKKKKKKKKKKKKKKKKKK   KKKKKKKKKKKKKKKKKKKKK   WWKKKWWW   K    K         TTTTTTTTTTT    ",
     "  KKKKK   TTTTTTTTTTTTTTTTTT TTTTTTTTTTTTTTTTTTTTT   TTTTTTTTTTTTTTTTTTTTT   WWWWWWWW        K         TTTTTTTTTTT    ",
     " XXXXXXX  TTTTTTTTTTTTTTTTTT TTTTTTTTTTTTTTTTTTTTT   TTTTTTTTTTTTTTTTTTTTT   WWWWWWWW        W         TTTTTTTTTTT    ",
@@ -110,7 +110,6 @@ LEVEL_5_MAP = [
     "    KKKKKKKKKKKKKKKKKKKKKKKKKKK      TTTTTTTTTTT     XXXXXXXXX  XXXXXXXXX  XXXXXXXXX                                                                                                        ",
 ]
 # --- BÖLÜM 6: HIZ PARKURU (TWI SHOWCASE) ---
-# Twi: 8 Kare Yatay - Uzun boşluklar (7-8 kare)
 LEVEL_6_MAP = [
     "                                                                                                                                                                                                                                                ",
     "                                                                                                                                                                                                                                                ",
@@ -135,8 +134,6 @@ LEVEL_6_MAP = [
 ]
 
 # --- BÖLÜM 7: TUKAN (HIZ VE MOMENTUM) ---
-# N: Tukan
-# Çok uzun düzlükler, imkansız gibi görünen geniş boşluklar
 LEVEL_7_MAP = [
     "                                                                                                                                                                                                                                                                                        ",
     "                                                                                                                                                                                                                                                                                        ",
@@ -157,5 +154,5 @@ LEVEL_7_MAP = [
     "    KKKKKKKKKKKKK                                                                                                                                                                                                                                            F                          ",
     "    KKKKKKKKKKKKK                                                                                                                                                                                                                                           FFF                         ",
     "    TTTTTTTTTTTTT                                                  K                                                          K                                                            K                                                               FFFFF                        ",
-        "    TTTTTTTTTTTTTXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXK   WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWK   WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWK   WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWFFFFFFF                        ",
-    ]
+    "    TTTTTTTTTTTTTXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXK   WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWK   WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWK   WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWFFFFFFF                        ",
+]

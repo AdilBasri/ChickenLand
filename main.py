@@ -4,7 +4,7 @@ import math
 from settings import *
 from sprites import Tile, Flag, WebItem, WaveGrass
 from player import Player
-from npcs import NPC, Enemy
+from npcs import NPC, Enemy, FlyingEnemy, Coconut, Snake
 from ui import draw_prompt, draw_dialogue_box, MainMenu, WorldMap, SettingsMenu, InventoryOverlay
 from level_map import LEVEL_1_MAP, LEVEL_2_MAP, LEVEL_3_MAP, LEVEL_4_MAP, LEVEL_5_MAP, LEVEL_6_MAP, LEVEL_7_MAP
 
@@ -33,7 +33,6 @@ inventory_overlay = None
 class ParallaxBackground:
     def __init__(self):
         self.layers = []
-        # DÜZELTME: Anlık ekran boyutunu alıyoruz
         screen_size = pygame.display.get_surface().get_size()
         w, h = screen_size[0], screen_size[1]
         
@@ -127,10 +126,12 @@ def create_level(level_map, level_num, party_list):
                 if level_num == 6: target = 'twi' 
                 if level_num == 7: target = 'tukan'
                 if target not in owned_types: npcs.add(NPC(x, y, target))
-            elif cell == 'D': enemies.add(Enemy(x, y)) 
-            elif cell == 'F': flags.add(Flag(x, y))
-            elif cell == 'S': 
+            elif cell == 'D': enemies.add(Enemy(x, y))
+            elif cell == 'C': enemies.add(FlyingEnemy(x, y)) 
+            elif cell == 'S': enemies.add(Snake(x, y))
+            elif cell == 'G': 
                 if not grapple_owned: web_items.add(WebItem(x, y)) 
+            elif cell == 'F': flags.add(Flag(x, y))
     return tiles, hazards, npcs, enemies, flags, web_items, wave_grass
 
 def reset_game(party_list, level_id):
@@ -165,6 +166,7 @@ def main():
     global CURRENT_STATE, DIALOGUE_OPTION, CURRENT_LEVEL_ID, TRANSITION_RADIUS, party, IS_TRANSITIONING, main_menu, world_map, settings_menu
     global DIALOGUE_MODE, DIALOGUE_TARGET_NPC, INVENTORY_OPEN, inventory_overlay
 
+    pygame.mixer.init() # Ses mikserini başlat
     pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.KEYUP, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION])
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     pygame.display.set_caption("Chick: Going To Chicken Land")
@@ -173,7 +175,22 @@ def main():
     try: ui_font = pygame.font.Font('assets/font.ttf', 20)
     except: ui_font = pygame.font.SysFont("Arial", 20, bold=True)
     
-    # Parallax'ı ekran oluşturulduktan sonra çağırıyoruz
+    # --- MÜZİK VE EFEKTLERİ YÜKLE ---
+    try:
+        pygame.mixer.music.load('assets/music.mp3')
+        pygame.mixer.music.set_volume(0.5) # Müziği biraz kıs
+        pygame.mixer.music.play(-1) # Sonsuz döngü
+    except: print("Müzik bulunamadı")
+
+    # Ses efektlerini global veya main scope içinde tutabiliriz
+    try:
+        jump_sound = pygame.mixer.Sound('assets/jump.wav')
+        hit_sound = pygame.mixer.Sound('assets/hit.wav')
+        lvl_up_sound = pygame.mixer.Sound('assets/lvl_up.wav')
+    except: 
+        print("Ses dosyalarında eksik var!")
+        jump_sound = None; hit_sound = None; lvl_up_sound = None
+
     parallax_bg = ParallaxBackground()
     main_menu = MainMenu()
     world_map = WorldMap()
@@ -185,10 +202,10 @@ def main():
     active_index = 0
     
     tile_group, hazard_group, npc_group, enemy_group, flag_group, web_group, wave_grass_group = (pygame.sprite.Group() for _ in range(7))
+    projectile_group = pygame.sprite.Group() 
     scroll_x = 0
     
     while True:
-        # DÜZELTME: Her karede ekranı temizle (Üst üste binmeyi engeller)
         screen.fill((0, 0, 0))
 
         if CURRENT_STATE == STATE_GAME and not INVENTORY_OPEN: pygame.mouse.set_visible(False)
@@ -227,6 +244,7 @@ def main():
                 if selected_level:
                     CURRENT_LEVEL_ID = selected_level
                     tile_group, hazard_group, npc_group, enemy_group, flag_group, web_group, wave_grass_group = reset_game(party, CURRENT_LEVEL_ID)
+                    projectile_group.empty() 
                     CURRENT_STATE = STATE_GAME
             
             elif CURRENT_STATE == STATE_GAME:
@@ -247,6 +265,8 @@ def main():
                             if event.key == p.input_scheme['jump'] and p.grapple_state != 'aiming':
                                 if p.scheme_name == 'WASD' or (p.scheme_name == 'ARROWS' and i == active_index):
                                     p.jump()
+                                    # --- ZIPLAMA SESİ ---
+                                    if jump_sound: jump_sound.play()
 
                         if event.key == pygame.K_e:
                             for npc in npc_group:
@@ -289,7 +309,6 @@ def main():
         if CURRENT_STATE == STATE_MENU: main_menu.draw(screen)
         elif CURRENT_STATE == STATE_SETTINGS: settings_menu.draw(screen)
         elif CURRENT_STATE == STATE_MAP: 
-            # screen.fill buraya gerek yok çünkü döngü başında yaptık
             world_map.draw(screen)
         elif CURRENT_STATE == STATE_GAME or CURRENT_STATE == 'dialogue':
             targets = [p for p in party if not p.is_dead]
@@ -314,22 +333,48 @@ def main():
                     for i, p in enumerate(party):
                         is_active = (i == active_index)
                         p.update(tile_group, hazard_group, 'playing', party, particle_group, is_active)
-                        if pygame.sprite.spritecollide(p, enemy_group, False): p.is_dead = True
-                        if p.is_dead: any_dead = True
+                        
+                        # --- ÇARPIŞMA KONTROLÜ VE SESLER ---
+                        collided_enemies = pygame.sprite.spritecollide(p, enemy_group, False)
+                        for enemy in collided_enemies:
+                            # Anan'ın içinden geç, diğerlerine (Köpek, Yılan) çarpınca öl
+                            if not isinstance(enemy, FlyingEnemy):
+                                if not p.is_dead and hit_sound: hit_sound.play() # ÖLÜM SESİ
+                                p.is_dead = True
+
                         if pygame.sprite.spritecollide(p, web_group, True):
                             if not any(m.has_grapple for m in party):
+                                if lvl_up_sound: lvl_up_sound.play() # YETENEK SESİ
                                 p.has_grapple = True
+                        
+                        # --- MERMİ ÇARPIŞMASI ---
+                        if pygame.sprite.spritecollide(p, projectile_group, True): 
+                            if not p.is_dead and hit_sound: hit_sound.play() # ÖLÜM SESİ
+                            p.is_dead = True
+                            any_dead = True
+                            
+                        if p.is_dead: any_dead = True
 
-                    for enemy in enemy_group: enemy.update(tile_group, party)
+                    # --- DÜŞMAN UPDATE ---
+                    for enemy in enemy_group:
+                        if isinstance(enemy, FlyingEnemy):
+                             enemy.update(party, projectile_group)
+                        else:
+                             enemy.update(tile_group, hazard_group, party)
+                    
+                    # --- MERMİ UPDATE ---
+                    projectile_group.update(tile_group)
+                    
                     web_group.update()
                     
                     if any_dead:
                          tile_group, hazard_group, npc_group, enemy_group, flag_group, web_group, wave_grass_group = reset_game(party, CURRENT_LEVEL_ID)
+                         projectile_group.empty()
 
             if parallax_bg: parallax_bg.draw(screen, scroll_x)
             else: screen.fill(SKY_BLUE)
             
-            for group in [tile_group, hazard_group, flag_group, enemy_group, web_group, npc_group, wave_grass_group, particle_group]:
+            for group in [tile_group, hazard_group, flag_group, enemy_group, web_group, npc_group, wave_grass_group, particle_group, projectile_group]:
                 for sprite in group:
                     if hasattr(sprite, 'draw_scrolled'): sprite.draw_scrolled(screen, scroll_x)
             
